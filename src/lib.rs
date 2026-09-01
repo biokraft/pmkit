@@ -4,4 +4,5 @@
 pub mod capabilities;
 pub mod error;
 pub mod preamble;
+pub mod skills;
 pub mod target;
