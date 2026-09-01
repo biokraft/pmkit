@@ -100,14 +100,13 @@ impl Destination {
 }
 
 pub fn destination_for(target: Target, project_dir: &Path, home: &Path) -> Destination {
-    if target.is_in_repo() {
-        return Destination::Repo(project_dir.to_path_buf());
+    match target {
+        Target::ClaudeCode | Target::Cursor | Target::Codex => {
+            Destination::Repo(project_dir.to_path_buf())
+        }
+        Target::Cowork => Destination::Home(home.join("pmkit-cowork")),
+        Target::ChatGpt => Destination::Home(home.join("pmkit-chatgpt")),
     }
-    let staged = match target {
-        Target::Cowork => "pmkit-cowork",
-        _ => "pmkit-chatgpt",
-    };
-    Destination::Home(home.join(staged))
 }
 
 #[cfg(test)]
