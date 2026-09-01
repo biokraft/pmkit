@@ -227,20 +227,35 @@ pub fn apply(
         let tracked = tracked_index.map(|i| &entries[i]);
         let state = state_of(&f.path, &wanted, tracked);
 
-        let action = match state {
-            FileState::Current => Action::Unchanged,
-            FileState::Modified => Action::SkippedModified,
-            FileState::Missing if tracked.is_some() && policy == MissingPolicy::Preserve => {
-                Action::Pruned
+        // An entry recorded as `created: false` is pmkit's own record that it did
+        // NOT put this file on disk. That must hold on the write path too, not
+        // just in `uninstall` — otherwise the flag is meaningless on the one
+        // path that can destroy data. Treat such a tracked file as never
+        // writable: report it the same way as a foreign edit, and leave both
+        // the file and the entry's `created: false` untouched.
+        let never_writable = tracked.map(|e| !e.created).unwrap_or(false);
+
+        let action = if never_writable && state != FileState::Current {
+            Action::SkippedModified
+        } else {
+            match state {
+                FileState::Current => Action::Unchanged,
+                FileState::Modified => Action::SkippedModified,
+                FileState::Missing if tracked.is_some() && policy == MissingPolicy::Preserve => {
+                    Action::Pruned
+                }
+                _ => match write_file(&f.path, &f.contents) {
+                    Ok(()) if state == FileState::Missing && tracked.is_none() => Action::Installed,
+                    Ok(()) => Action::Refreshed,
+                    Err(_) => Action::Failed,
+                },
             }
-            _ => match write_file(&f.path, &f.contents) {
-                Ok(()) if state == FileState::Missing && tracked.is_none() => Action::Installed,
-                Ok(()) => Action::Refreshed,
-                Err(_) => Action::Failed,
-            },
         };
 
-        if matches!(
+        if never_writable {
+            // Don't touch the entry at all: no flipping `created` to true, no
+            // refreshing its recorded hash.
+        } else if matches!(
             action,
             Action::Installed | Action::Refreshed | Action::Unchanged
         ) {
@@ -513,6 +528,80 @@ mod tests {
         assert!(!is_pmkit_path(std::path::Path::new(
             "/p/.claude/skills/not-a-pmkit-skill/SKILL.md"
         )));
+    }
+
+    #[test]
+    fn apply_never_writes_an_entry_recorded_as_not_created_by_pmkit() {
+        // Finding 1: `created: false` is pmkit's own record that it did NOT put
+        // this file on disk. `apply` must honor that on the write path (not just
+        // `uninstall`), even when the on-disk bytes are Stale relative to new
+        // wanted content — a case that would otherwise trigger a rewrite.
+        let tmp = tempfile::tempdir().unwrap();
+        let files = planned(tmp.path());
+        let old_contents = files[0].contents.clone();
+        if let Some(parent) = files[0].path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(&files[0].path, &old_contents).unwrap();
+
+        let mut entries = vec![Entry {
+            path: files[0].path.clone(),
+            target: Target::ClaudeCode.as_str().to_string(),
+            kind: "skill".into(),
+            // Recorded hash matches the bytes on disk, so state resolves to
+            // Stale relative to the new wanted content below — the case that
+            // would normally trigger a rewrite.
+            sha256: content_hash(old_contents.as_bytes()),
+            version: "0.0.0".into(),
+            skill: "pmk-feature-loop".into(),
+            created: false,
+        }];
+
+        let mut changed = files.clone();
+        changed[0].contents.push_str("\nnew upstream line\n");
+        let out = apply(
+            &changed,
+            Target::ClaudeCode,
+            &mut entries,
+            MissingPolicy::Restore,
+        );
+
+        assert_eq!(
+            std::fs::read_to_string(&changed[0].path).unwrap(),
+            old_contents,
+            "a file pmkit did not create must not be rewritten"
+        );
+        assert!(out
+            .iter()
+            .any(|o| o.path == changed[0].path && o.action == Action::SkippedModified));
+        assert!(!entries[0].created, "created must not flip to true");
+    }
+
+    #[test]
+    fn uninstall_leaves_a_not_created_entry_alone_even_when_its_path_would_pass_the_guard() {
+        // Finding 2: the bystander must use a filename that legitimately PASSES
+        // is_pmkit_path (unlike `.claude/mine.md`), so this test is load-bearing
+        // on the `created` check specifically, not riding on the path guard.
+        let tmp = tempfile::tempdir().unwrap();
+        let bystander = tmp.path().join("AGENTS.md");
+        std::fs::write(&bystander, "not pmkit's file\n").unwrap();
+        assert!(is_pmkit_path(&bystander), "path must pass the guard");
+
+        let mut entries = vec![Entry {
+            path: bystander.clone(),
+            target: "claude-code".into(),
+            kind: "instructions".into(),
+            sha256: content_hash(b"not pmkit's file\n"),
+            version: "0.0.0".into(),
+            skill: "-".into(),
+            created: false,
+        }];
+
+        uninstall(&mut entries, Some(Target::ClaudeCode));
+        assert!(
+            bystander.exists(),
+            "an entry recorded as not created by pmkit must survive uninstall"
+        );
     }
 
     #[test]
