@@ -27,6 +27,15 @@ reviews their PR.
 ChatGPT, and Claude Code. Codex and ChatGPT are separate targets despite sharing a
 vendor: Codex has a shell and reads `AGENTS.md`, ChatGPT has neither.
 
+The Codex target also serves **ChatGPT Workspace Agents** (launched April 2026,
+Codex-powered, aimed at non-engineers and replacing custom GPTs for Business and
+Enterprise). Workspace Agents read the same `.agents/skills` folders with the same
+`SKILL.md` frontmatter, so one emitter covers both; it additionally writes the optional
+`agents/openai.yaml`, which sets the display name and invocation policy in the ChatGPT
+desktop app's Skills sidebar. The separate `ChatGPT` target remains the fallback for a
+consumer ChatGPT subscriber with no Workspace Agents seat, who can only paste
+instructions.
+
 **Non-goals for v1:** Windows support; `pmkit`-native Jira or Playwright command
 wrappers; an MCP server; telemetry; a hosted install page; our own brainstorm/plan/
 review skill chain (we wrap Superpowers instead); automated agent-behaviour evals;
@@ -97,7 +106,7 @@ the skill must do instead when a capability is absent.
 | --- | --- | --- |
 | Claude Code | `.claude/skills/pmk-*/SKILL.md` + `settings.json` hooks | prose + PreToolUse hooks (hard block) |
 | Cursor | `.cursor/rules/`, `.cursor/commands/`, `AGENTS.md` | prose + Cursor hooks |
-| Codex | `.agents/skills/`, `AGENTS.md` | prose; shell available |
+| Codex / ChatGPT Workspace Agents | `.agents/skills/`, `AGENTS.md`, `agents/openai.yaml` | prose; shell available |
 | Cowork | `~/pmkit-cowork/` folder, ready to upload; opened in Finder | prose only |
 | ChatGPT | `pmkit-chatgpt-instructions.md`, copied to clipboard | prose only |
 
