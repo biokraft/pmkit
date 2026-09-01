@@ -32,7 +32,8 @@ carried over from an earlier step, not "they said go ahead" from before the plan
 2. **Any write to Jira.** Show the exact text you intend to write. Then ask. Their whole
    organisation reads their Jira. A status transition is a write, even though it has no free text.
 3. **Any command that sends something off this machine or acts on anything outside it** — a deploy,
-   an API call, an email, a chat message, a write to a shared service. Installing declared dependencies from a package registry is not this gate; sending data somewhere is. If you cannot
+   an API call, an email, a chat message, a write to a shared service. Installing declared
+   dependencies from a package registry is not this gate; sending data somewhere is. If you cannot
    tell which one you are about to do, ask.
 
 If your surface blocks these for you, they are still gates. If it does not, you are the gate.

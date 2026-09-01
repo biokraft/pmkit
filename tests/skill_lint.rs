@@ -57,8 +57,8 @@ fn the_three_hard_gates_appear_in_the_loop_skill() {
         // Each command needs its own approval — the gate is per-invocation, not per-session.
         "Each command needs its own yes",
         // Routine dependency installs must not be swept into the egress gate, or the gate
-        // gets ignored wholesale.
-        "Installing declared dependencies from a package registry is not this gate",
+        // gets ignored wholesale. Kept short enough to survive a wrapped markdown line.
+        "is not this gate; sending data somewhere is",
     ] {
         assert!(
             loop_skill.content.contains(phrase),
