@@ -39,7 +39,7 @@ impl Target {
         match self {
             Target::ClaudeCode => "Claude Code (terminal)",
             Target::Cursor => "Cursor",
-            Target::Codex => "Codex CLI",
+            Target::Codex => "Codex / ChatGPT Workspace Agents",
             Target::Cowork => "Claude Cowork",
             Target::ChatGpt => "ChatGPT",
         }

@@ -1,4 +1,8 @@
+pub mod chatgpt;
 pub mod claude_code;
+pub mod codex;
+pub mod cowork;
+pub mod cursor;
 
 use crate::capabilities::Capabilities;
 use crate::preamble::preamble;
@@ -43,8 +47,30 @@ pub fn skill_body(skill: &Skill, target: Target, caps: &Capabilities) -> String 
 pub fn plan_files(target: Target, caps: &Capabilities, dest: &Destination) -> Vec<EmitFile> {
     match target {
         Target::ClaudeCode => claude_code::plan(caps, dest),
-        _ => Vec::new(),
+        Target::Cursor => cursor::plan(caps, dest),
+        Target::Codex => codex::plan(caps, dest),
+        Target::Cowork => cowork::plan(caps, dest),
+        Target::ChatGpt => chatgpt::plan(caps, dest),
     }
+}
+
+/// The always-loaded file for targets that read `AGENTS.md`. Restates the
+/// entry point and the three gates; the detail lives in the skills.
+pub(crate) fn agents_md(target: Target, caps: &Capabilities) -> String {
+    format!(
+        "<!-- Written by pmkit. Edit freely — pmkit detects your changes and will not overwrite them. -->\n\n\
+         # Working with a product manager\n\n\
+         {}\n\
+         Start every piece of feature work with the `pmk-feature-loop` skill.\n\n\
+         ## Never do these without an explicit yes\n\n\
+         1. `git push`, force-push, merge, or open a pull request.\n\
+         2. Any write to Jira.\n\
+         3. Any command touching something that is not a local development URL.\n\n\
+         ## Never claim what you have not seen\n\n\
+         A user-visible change is unverified until a screenshot exists. Say \"I could not verify \
+         this visually\" rather than implying you checked.\n",
+        preamble(target, caps).trim_end()
+    )
 }
 
 /// Shared helper: one skill file per skill under `root/<dir>/<name>/SKILL.md`.
