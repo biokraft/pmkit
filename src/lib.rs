@@ -2,6 +2,7 @@
 //! product manager already uses.
 
 pub mod capabilities;
+pub mod commands;
 pub mod emit;
 pub mod error;
 pub mod preamble;
