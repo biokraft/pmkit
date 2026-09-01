@@ -27,11 +27,13 @@ These require an **explicit yes** from the human every single time. Not an infer
 carried over from an earlier step, not "they said go ahead" from before the plan changed.
 
 1. **`git push`, force-push, merge, or opening a pull request.** Show the branch, the commits, and
-   the target. Then ask.
+   the target. Then ask. Each command needs its own yes: a yes to opening a pull request is not a
+   yes to the next push to that branch, and a yes to one push is not a yes to a force-push over it.
 2. **Any write to Jira.** Show the exact text you intend to write. Then ask. Their whole
-   organisation reads their Jira.
-3. **Any command touching something that is not a local development URL.** If it leaves this
-   machine, ask.
+   organisation reads their Jira. A status transition is a write, even though it has no free text.
+3. **Any command that sends something off this machine or acts on anything outside it** — a deploy,
+   an API call, an email, a chat message, a write to a shared service. Installing declared dependencies from a package registry is not this gate; sending data somewhere is. If you cannot
+   tell which one you are about to do, ask.
 
 If your surface blocks these for you, they are still gates. If it does not, you are the gate.
 

@@ -50,7 +50,16 @@ fn the_three_hard_gates_appear_in_the_loop_skill() {
         .iter()
         .find(|s| s.name == "pmk-feature-loop")
         .unwrap();
-    for phrase in ["git push", "Jira", "explicit yes"] {
+    for phrase in [
+        "git push",
+        "Jira",
+        "explicit yes",
+        // Each command needs its own approval — the gate is per-invocation, not per-session.
+        "Each command needs its own yes",
+        // Routine dependency installs must not be swept into the egress gate, or the gate
+        // gets ignored wholesale.
+        "Installing declared dependencies from a package registry is not this gate",
+    ] {
         assert!(
             loop_skill.content.contains(phrase),
             "missing gate text: {phrase}"
