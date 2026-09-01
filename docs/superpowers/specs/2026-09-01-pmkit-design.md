@@ -23,7 +23,9 @@ reviews their PR.
 
 **v1 covers the full loop:** discover → spec → build → verify → Jira.
 
-**Agent surfaces in scope:** Claude Cowork, Cursor, ChatGPT/Codex, Claude Code.
+**Agent surfaces in scope:** five emit targets — Claude Cowork, Cursor, Codex,
+ChatGPT, and Claude Code. Codex and ChatGPT are separate targets despite sharing a
+vendor: Codex has a shell and reads `AGENTS.md`, ChatGPT has neither.
 
 **Non-goals for v1:** Windows support; `pmkit`-native Jira or Playwright command
 wrappers; an MCP server; telemetry; a hosted install page; our own brainstorm/plan/
@@ -64,7 +66,7 @@ pmkit/
 │  ├─ main.rs
 │  ├─ lib.rs
 │  ├─ skill.rs        # SKILLS[] via include_str!, sha256 state, refresh, uninstall
-│  ├─ target.rs       # Target enum + per-target metadata
+│  ├─ target.rs       # Target enum (5 variants) + per-target metadata
 │  ├─ preamble.rs     # capability preamble generation
 │  ├─ emit/           # one writer per target
 │  ├─ doctor/         # one probe per prerequisite
@@ -99,8 +101,12 @@ the skill must do instead when a capability is absent.
 | Cowork | `~/pmkit-cowork/` folder, ready to upload; opened in Finder | prose only |
 | ChatGPT | `pmkit-chatgpt-instructions.md`, copied to clipboard | prose only |
 
-Emit is a pure function of (skills, target, project directory). Every written path is
-recorded with its sha256, so a PM's own edits are detected and never overwritten.
+Emit is a pure function of (skills, target, destination) — the destination is the project
+directory for the three in-repo targets, and a fixed location under the user's home for
+Cowork and ChatGPT, which have no repo to write into. Every written path is recorded with
+its sha256, so a PM's own edits are detected and never overwritten. Side effects that are
+not file writes (opening Finder, copying to the clipboard) live in the wizard, not in
+`emit/`, so emit stays testable by golden file.
 
 **Rejected alternatives.** Per-target hand-written skill packs: five times the prose to
 keep in sync, and gate wording drifting between surfaces is precisely the failure this
@@ -122,8 +128,9 @@ plain language without jargon, and a **say-it-back gate** — before writing the
 agent restates the idea in the PM's own words along with the three assumptions it is
 making, and waits for confirmation.
 
-Output: a spec at `docs/specs/YYYY-MM-DD-<topic>.md`, reviewed by the PM before any plan
-exists.
+Output: a spec at `docs/specs/YYYY-MM-DD-<topic>.md` in the PM's own project — a shorter
+path than the `docs/superpowers/specs/` this document lives in, chosen deliberately so a
+PM can find their own specs without knowing what Superpowers is.
 
 ### Stage 2 — `pmk-build-safely` (plan → build)
 
@@ -248,8 +255,8 @@ The `bbcloud` pipeline, reused: `release-plz` for versioning and changelog; a CI
 building macOS arm64/x86_64 and Linux x86_64/aarch64; tarballs and `.sha256` files on
 GitHub Releases; `install.sh` verifying the checksum and installing to `~/.local/bin`;
 `package.nix` and `flake.nix` for Nix; and a formula in `biokraft/homebrew-tap`. The
-repository is private during design and flips to public at the first release, which
-`install.sh` requires for its raw URL.
+repository is public from the outset, so `install.sh` can be fetched by raw URL and the
+design is readable alongside the article that will describe it.
 
 ## Build order
 
