@@ -2,3 +2,4 @@
 //! product manager already uses.
 
 pub mod error;
+pub mod target;
