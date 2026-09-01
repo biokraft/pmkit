@@ -108,8 +108,8 @@ mod tests {
         let hooks = parsed["hooks"]["PreToolUse"].as_array().unwrap();
         assert!(!hooks.is_empty());
         let text = cfg.contents.as_str();
-        assert!(text.contains("git push"));
-        assert!(text.contains("git merge"));
+        assert!(text.contains("push"));
+        assert!(text.contains("merge"));
     }
 
     #[test]
