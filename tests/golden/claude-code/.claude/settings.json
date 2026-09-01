@@ -1,0 +1,43 @@
+{
+  "$comment": "Written by pmkit. Edit freely — pmkit detects your changes and will not overwrite them.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if printf '%s' \"$cmd\" | grep -Eq 'git push'; then echo 'pmkit: `git push` needs an explicit yes from the human. Show the branch and target, then ask.' >&2; exit 2; fi",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if printf '%s' \"$cmd\" | grep -Eq 'git merge'; then echo 'pmkit: merging needs an explicit yes from the human.' >&2; exit 2; fi",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if printf '%s' \"$cmd\" | grep -Eq 'gh pr create'; then echo 'pmkit: opening a pull request needs an explicit yes from the human.' >&2; exit 2; fi",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if printf '%s' \"$cmd\" | grep -Eq 'gh pr merge'; then echo 'pmkit: merging a pull request needs an explicit yes from the human.' >&2; exit 2; fi",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  }
+}
