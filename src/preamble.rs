@@ -63,9 +63,15 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
     }
 
     match caps.jira {
-        JiraBackend::Acli => out.push_str(
+        JiraBackend::Acli if target.is_in_repo() => out.push_str(
             "Jira access is through the `acli` command line tool. Use it for every Jira read and \
              write.\n\n",
+        ),
+        JiraBackend::Acli => out.push_str(
+            "Jira access is through the `acli` command line tool, but you have **no shell** on \
+             this surface. Print the `acli` command in a copyable block and ask the human to run \
+             it and paste the output. Never claim a Jira read or write you did not see the human \
+             run.\n\n",
         ),
         JiraBackend::Mcp => out.push_str(
             "Jira access is through the Atlassian MCP tools. Use them for every Jira read and \
@@ -147,6 +153,19 @@ mod tests {
             },
         );
         assert!(none.contains("no Jira access"));
+    }
+
+    #[test]
+    fn a_shell_less_target_with_acli_tells_the_human_to_run_it_not_the_agent() {
+        let text = preamble(
+            Target::ChatGpt,
+            &Capabilities {
+                jira: JiraBackend::Acli,
+                ..Capabilities::all_present()
+            },
+        );
+        assert!(text.contains("ask the human to run it and paste the output"));
+        assert!(!text.contains("Use it for every Jira read and write"));
     }
 
     #[test]
