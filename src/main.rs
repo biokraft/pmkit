@@ -149,8 +149,11 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Some(Command::Doctor) => {
-            let probes =
-                pmkit::doctor::probes::run_all(&pmkit::doctor::runner::RealRunner, &home_dir());
+            let probes = pmkit::doctor::probes::run_all(
+                &pmkit::doctor::runner::RealRunner,
+                &home_dir(),
+                pmkit::forge::Forge::GitHub,
+            );
             println!("{}", pmkit::doctor::table(&probes));
 
             let commands: Vec<&str> = probes

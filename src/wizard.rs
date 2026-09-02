@@ -1,6 +1,7 @@
 use crate::capabilities::Capabilities;
 use crate::doctor::{probes, runner::RealRunner, table};
 use crate::error::Result;
+use crate::forge::Forge;
 use crate::state::{Action, Outcome};
 use crate::target::{destination_for, Destination, Target};
 use std::path::Path;
@@ -86,9 +87,9 @@ pub fn run_unattended(
     home: &Path,
     state_file: &Path,
 ) -> Result<()> {
-    let probes = probes::run_all(&RealRunner, home);
+    let probes = probes::run_all(&RealRunner, home, Forge::GitHub);
     println!("{}", table(&probes));
-    let caps = probes::capabilities_from(&probes);
+    let caps = probes::capabilities_from(&probes, Forge::GitHub);
 
     let outcomes = crate::commands::skill::install(targets, project_dir, home, &caps, state_file)?;
     println!();
