@@ -83,7 +83,9 @@ two lists: shell commands you can paste and run, and manual steps that happen so
 agent, in a browser).
 
 - **git** — records every change, so nothing your agent does is unrecoverable.
-- **gh** or **bb** — the pull-request CLI for your host. `gh` for GitHub, [`bb`](https://github.com/biokraft/bbcloud) for Bitbucket Cloud (`brew install biokraft/tap/bb`, then `bb auth login`). The doctor only checks the one you chose.
+- **gh** or **bb** — the pull-request CLI for your host. `gh` for GitHub, [`bb`](https://github.com/biokraft/bbcloud)
+  for Bitbucket Cloud (`brew install biokraft/tap/bb`, then `bb auth login`). The doctor only checks
+  the one you chose.
 - **Node 20+** — runs the browser automation that proves a screen actually works.
 - **Playwright** (`npx playwright install chromium`) — drives a real browser, so a claim that
   something works can be checked.

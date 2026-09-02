@@ -76,8 +76,8 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
                 );
             } else {
                 out.push_str(
-                    "`gh` is not installed, so you cannot open a pull request. Stop after \
-                     committing and tell the human.\n\n",
+                    "`gh` is not installed or not logged in, so you cannot open a pull \
+                     request. Stop after committing and tell the human.\n\n",
                 );
             }
         }
@@ -251,7 +251,10 @@ mod tests {
             ..Capabilities::all_present()
         };
         let text = preamble(Target::ClaudeCode, &caps);
-        assert!(text.contains("`gh` is not installed"), "{text}");
+        assert!(
+            text.contains("`gh` is not installed or not logged in"),
+            "{text}"
+        );
         assert!(text.contains("cannot open a pull request"), "{text}");
     }
 

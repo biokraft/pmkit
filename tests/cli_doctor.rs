@@ -23,6 +23,6 @@ fn doctor_with_forge_both_probes_gh_and_bb() {
         .args(["doctor", "--forge", "both"])
         .assert()
         .success()
-        .stdout(contains("│ gh "))
-        .stdout(contains("│ bb "));
+        .stdout(contains("GitHub CLI is how a"))
+        .stdout(contains("Bitbucket Cloud CLI is"));
 }
