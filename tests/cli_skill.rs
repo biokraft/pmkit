@@ -82,3 +82,79 @@ fn an_unknown_target_fails_with_the_valid_list() {
         .failure()
         .stderr(contains("claude-code"));
 }
+
+#[test]
+fn refresh_does_not_resurrect_a_deliberately_deleted_file() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let state = tmp.path().join("skills.json");
+
+    pmkit(&project, &state)
+        .args(["skill", "install", "--target", "codex"])
+        .assert()
+        .success();
+
+    let deleted = project.join(".agents/skills/pmk-feature-loop/SKILL.md");
+    let survivor = project.join(".agents/skills/pmk-shape-idea/SKILL.md");
+    assert!(deleted.exists());
+    assert!(survivor.exists());
+    std::fs::remove_file(&deleted).unwrap();
+
+    pmkit(&project, &state)
+        .args(["skill", "refresh"])
+        .assert()
+        .success();
+
+    assert!(
+        !deleted.exists(),
+        "a deliberately deleted file must not reappear on refresh"
+    );
+    assert!(survivor.exists(), "other installed files must be untouched");
+}
+
+#[test]
+fn uninstall_without_target_or_all_refuses_and_removes_nothing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let state = tmp.path().join("skills.json");
+
+    pmkit(&project, &state)
+        .args(["skill", "install", "--target", "codex"])
+        .assert()
+        .success();
+
+    pmkit(&project, &state)
+        .args(["skill", "uninstall"])
+        .assert()
+        .failure()
+        .stderr(contains("--target"))
+        .stderr(contains("--all"));
+
+    assert!(project
+        .join(".agents/skills/pmk-feature-loop/SKILL.md")
+        .exists());
+}
+
+#[test]
+fn uninstall_with_all_removes_every_target() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let state = tmp.path().join("skills.json");
+
+    pmkit(&project, &state)
+        .args(["skill", "install", "--target", "codex"])
+        .assert()
+        .success();
+
+    pmkit(&project, &state)
+        .args(["skill", "uninstall", "--all"])
+        .assert()
+        .success();
+
+    assert!(!project
+        .join(".agents/skills/pmk-feature-loop/SKILL.md")
+        .exists());
+}

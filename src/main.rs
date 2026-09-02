@@ -33,8 +33,8 @@ enum SkillCmd {
     /// Re-emit whatever targets are already tracked, without restoring files
     /// that were deliberately deleted.
     Refresh,
-    /// Remove the files pmkit wrote for one target (or every target).
-    Uninstall(TargetArg),
+    /// Remove the files pmkit wrote for one target, or every target with `--all`.
+    Uninstall(UninstallArg),
 }
 
 #[derive(Args)]
@@ -49,6 +49,16 @@ struct TargetArg {
 
 fn parse_target(s: &str) -> Result<Target, String> {
     s.parse::<Target>().map_err(|e| e.to_string())
+}
+
+#[derive(Args)]
+struct UninstallArg {
+    /// Which agent to remove. Omit and pass --all to remove every target.
+    #[arg(long, value_parser = parse_target)]
+    target: Option<Target>,
+    /// Remove every target pmkit installed. Required if --target is omitted.
+    #[arg(long)]
+    all: bool,
 }
 
 fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
@@ -94,6 +104,13 @@ fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
             }
         }
         SkillCmd::Uninstall(arg) => {
+            if arg.target.is_none() && !arg.all {
+                eprintln!(
+                    "pmkit: `skill uninstall` needs to know what to remove.\n\
+                     Pass --target <agent> to remove one, or --all to remove every target pmkit installed."
+                );
+                std::process::exit(1);
+            }
             for o in pmkit::commands::skill::remove(arg.target, &state)? {
                 println!("{:<12} {}", o.action.as_str(), o.path.display());
             }
