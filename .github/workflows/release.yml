@@ -1,0 +1,126 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: ${{ matrix.triple }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest,     triple: aarch64-apple-darwin }
+          - { os: macos-13,         triple: x86_64-apple-darwin }
+          - { os: ubuntu-latest,    triple: x86_64-unknown-linux-gnu }
+          - { os: ubuntu-24.04-arm, triple: aarch64-unknown-linux-gnu }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.triple }}
+      - name: Package
+        run: |
+          set -eu
+          base="pmkit-${GITHUB_REF_NAME}-${{ matrix.triple }}"
+          tar -czf "$base.tar.gz" -C "target/${{ matrix.triple }}/release" pmkit
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$base.tar.gz" > "$base.sha256"
+          else
+            shasum -a 256 "$base.tar.gz" > "$base.sha256"
+          fi
+      - name: Upload
+        run: gh release upload "$GITHUB_REF_NAME" pmkit-*.tar.gz pmkit-*.sha256 --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  formula:
+    name: generate the multi-platform homebrew formula
+    needs: binaries
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      REPO: biokraft/pmkit
+      TAP_PAT: ${{ secrets.TAP_PAT }}
+    steps:
+      - name: Fetch release asset checksums
+        if: env.TAP_PAT != ''
+        run: |
+          set -euo pipefail
+          base="https://github.com/${REPO}/releases/download/${TAG}"
+          for target in aarch64-apple-darwin x86_64-apple-darwin x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
+            asset="pmkit-${TAG}-${target}"
+            curl -sSLf -o "/tmp/${asset}.sha256" "${base}/${asset}.sha256"
+          done
+
+      - name: Render Formula/pmkit.rb
+        if: env.TAP_PAT != ''
+        run: |
+          set -euo pipefail
+          base="https://github.com/${REPO}/releases/download/${TAG}"
+          sha() { awk '{print $1}' "/tmp/pmkit-${TAG}-${1}.sha256"; }
+
+          cat > /tmp/pmkit.rb <<RUBY
+          class Pmkit < Formula
+            desc "Blueprint setup for product managers who work with coding agents"
+            homepage "https://github.com/${REPO}"
+            license "MIT"
+            version "${TAG#v}"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${base}/pmkit-${TAG}-aarch64-apple-darwin.tar.gz"
+                sha256 "$(sha aarch64-apple-darwin)"
+              else
+                url "${base}/pmkit-${TAG}-x86_64-apple-darwin.tar.gz"
+                sha256 "$(sha x86_64-apple-darwin)"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${base}/pmkit-${TAG}-aarch64-unknown-linux-gnu.tar.gz"
+                sha256 "$(sha aarch64-unknown-linux-gnu)"
+              else
+                url "${base}/pmkit-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
+                sha256 "$(sha x86_64-unknown-linux-gnu)"
+              end
+            end
+
+            def install
+              bin.install "pmkit"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/pmkit --version")
+            end
+          end
+          RUBY
+
+      - name: Push the formula to the tap
+        if: env.TAP_PAT != ''
+        env:
+          COMMITTER_TOKEN: ${{ env.TAP_PAT }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${COMMITTER_TOKEN}@github.com/biokraft/homebrew-tap.git" /tmp/tap
+          mkdir -p /tmp/tap/Formula
+          cp /tmp/pmkit.rb /tmp/tap/Formula/pmkit.rb
+          cd /tmp/tap
+          git config user.name "pmkit-release-bot"
+          git config user.email "actions@github.com"
+          git add Formula/pmkit.rb
+          if git diff --cached --quiet; then
+            echo "Formula unchanged, nothing to commit."
+            exit 0
+          fi
+          git commit -m "pmkit ${TAG}"
+          git push origin HEAD
