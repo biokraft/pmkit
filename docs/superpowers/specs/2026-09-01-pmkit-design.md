@@ -214,6 +214,7 @@ then offer the exact command. It never runs a fix unasked.
 | gh | `gh auth status` | `brew install gh`, then `gh auth login` run by the human |
 | Node ≥ 20 | `node -v` | `brew install node` |
 | Playwright | `npx playwright --version`, browsers present | `npx playwright install chromium` |
+| `jq` | `jq --version` | `brew install jq` |
 | Superpowers | plugin present, or `~/.claude/plugins` | per-harness install instruction |
 | Jira backend | `acli` present, else Atlassian MCP configured, else neither | `brew install acli` + `acli jira auth login`, or the `claude mcp add` line |
 | Agent surfaces | which of the four are installed | determines what gets emitted |
