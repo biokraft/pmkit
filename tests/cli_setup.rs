@@ -174,8 +174,8 @@ fn setup_yes_with_forge_bitbucket_tells_the_agent_about_bb_and_not_gh() {
         ])
         .assert()
         .success()
-        .stdout(contains("Bitbucket Cloud CLI is"))
-        .stdout(predicates::str::contains("GitHub CLI is how a").not());
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap())
+        .stdout(predicates::str::is_match(r"(?m)^│ gh ").unwrap().not());
 
     let skill =
         std::fs::read_to_string(project.join(".agents/skills/pmk-feature-loop/SKILL.md")).unwrap();
@@ -198,7 +198,7 @@ fn setup_yes_detects_bitbucket_from_the_git_remote_when_no_flag_is_given() {
         .args(["setup", "--yes", "--target", "codex"])
         .assert()
         .success()
-        .stdout(contains("Bitbucket Cloud CLI is"));
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap());
 
     let skill =
         std::fs::read_to_string(project.join(".agents/skills/pmk-feature-loop/SKILL.md")).unwrap();
@@ -219,8 +219,8 @@ fn setup_yes_falls_back_to_github_when_nothing_is_detectable() {
         .args(["setup", "--yes", "--target", "codex"])
         .assert()
         .success()
-        .stdout(contains("GitHub CLI is how a"))
-        .stdout(predicates::str::contains("Bitbucket Cloud CLI is").not());
+        .stdout(predicates::str::is_match(r"(?m)^│ gh ").unwrap())
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap().not());
 }
 
 #[test]
