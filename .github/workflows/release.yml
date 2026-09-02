@@ -24,6 +24,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.triple }}
+      # rust-toolchain.toml pins cargo to its own channel, so the target the
+      # action installed for `stable` is invisible to it. Install the target
+      # for whichever toolchain rustup actually resolves in this checkout, or
+      # the Intel macOS cross-compile fails with "can't find crate for `core`".
+      - name: Add the target to the pinned toolchain
+        run: rustup target add ${{ matrix.triple }}
       - uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.triple }}
