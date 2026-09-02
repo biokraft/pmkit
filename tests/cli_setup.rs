@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use assert_cmd::Command;
 use predicates::str::contains;
 
@@ -47,6 +47,37 @@ fn setup_warns_loudly_when_it_refuses_to_overwrite_an_existing_file() {
     assert_eq!(
         std::fs::read_to_string(project.join(".claude/settings.json")).unwrap(),
         "{\"mine\": true}"
+    );
+}
+
+#[test]
+fn setup_does_not_claim_gates_are_enforced_when_settings_json_was_refused() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(project.join(".claude")).unwrap();
+    // The product manager already has their own settings.json.
+    std::fs::write(project.join(".claude/settings.json"), "{\"mine\": true}").unwrap();
+
+    let assert = Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(&project)
+        .env("PMKIT_HOME", tmp.path().join("home"))
+        .env("PMKIT_STATE_FILE", tmp.path().join("skills.json"))
+        .args(["setup", "--yes", "--target", "claude-code"])
+        .assert()
+        .success()
+        .stdout(contains("NOT enforced"));
+
+    let output = assert.get_output();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let next_steps_section = stdout
+        .split("What to do next")
+        .nth(1)
+        .expect("no 'What to do next' section in output");
+    assert!(
+        !next_steps_section.contains("The safety gates are enforced here"),
+        "the closing next-steps section still claims the gates are enforced, \
+         even though the settings.json that carries them was refused:\n{next_steps_section}"
     );
 }
 

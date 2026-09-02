@@ -14,12 +14,28 @@ pub struct Plan {
 
 /// What the human does next on this surface. This is the only place that knows
 /// a Cowork bundle has to be uploaded by hand.
-pub fn next_steps(target: Target, dest: &Destination) -> String {
+///
+/// `gate_installed` says whether this target's hook/settings file actually
+/// landed on disk this run. For a target whose gates are hook-enforced
+/// (`enforces_gates_with_hooks`), claiming enforcement when that file was
+/// refused (pmkit found one already there and left it alone) would tell a
+/// product manager they are protected when they are not — the one failure
+/// mode this whole tool exists to prevent. Targets whose gates are prose
+/// only ignore this flag: there is no hook file to have skipped.
+pub fn next_steps(target: Target, dest: &Destination, gate_installed: bool) -> String {
     let root = dest.root().display();
     let gate_note = if target.enforces_gates_with_hooks() {
-        "The safety gates are enforced here: push, merge and pull-request commands are blocked \
-         until you say yes."
-            .to_string()
+        if gate_installed {
+            "The safety gates are enforced here: push, merge and pull-request commands are \
+             blocked until you say yes."
+                .to_string()
+        } else {
+            "The safety gates are NOT active here: pmkit could not write its settings.json hook \
+             because you already had one, so push, merge and pull-request commands are not \
+             blocked yet. Merge pmkit's hook into your settings.json by hand, then run `pmkit \
+             setup` again."
+                .to_string()
+        }
     } else {
         "The safety gates here are written instructions, not enforced automatically. Read them \
          once so you know what your agent has promised."
@@ -40,6 +56,24 @@ pub fn next_steps(target: Target, dest: &Destination) -> String {
         ),
     };
     format!("{}\n{}\n{}\n", target.label(), body, gate_note)
+}
+
+/// Whether this target's hook/settings file actually landed on disk this
+/// run, per the `Vec<Outcome>` from `commands::skill::install`. Targets that
+/// don't enforce gates with hooks have no such file to check, so they
+/// trivially report `true` — `next_steps` never consults the flag for them.
+fn gate_installed(outcomes: &[Outcome], target: Target) -> bool {
+    if !target.enforces_gates_with_hooks() {
+        return true;
+    }
+    outcomes.iter().any(|o| {
+        o.target == target.as_str()
+            && o.path.file_name().is_some_and(|f| f == "settings.json")
+            && matches!(
+                o.action,
+                Action::Installed | Action::Refreshed | Action::Unchanged
+            )
+    })
 }
 
 /// Non-interactive setup: probe, emit, explain. `pmkit setup --yes` and the
@@ -88,7 +122,11 @@ pub fn run_unattended(
     }
     println!("\nWhat to do next\n");
     for &t in targets {
-        println!("{}", next_steps(t, &destination_for(t, project_dir, home)));
+        let installed = gate_installed(&outcomes, t);
+        println!(
+            "{}",
+            next_steps(t, &destination_for(t, project_dir, home), installed)
+        );
     }
     if !caps.superpowers {
         println!(
@@ -126,7 +164,7 @@ mod tests {
     #[test]
     fn in_repo_targets_are_described_as_ready_to_use() {
         let dest = destination_for(Target::Cursor, Path::new("/p"), Path::new("/h"));
-        let text = next_steps(Target::Cursor, &dest);
+        let text = next_steps(Target::Cursor, &dest, true);
         assert!(text.contains("ready to use"));
         assert!(text.contains("/p"));
     }
@@ -134,7 +172,7 @@ mod tests {
     #[test]
     fn cowork_is_told_to_upload_and_where_from() {
         let dest = destination_for(Target::Cowork, Path::new("/p"), Path::new("/h"));
-        let text = next_steps(Target::Cowork, &dest);
+        let text = next_steps(Target::Cowork, &dest, true);
         assert!(text.contains("upload"));
         assert!(text.contains("/h/pmkit-cowork"));
     }
@@ -142,7 +180,7 @@ mod tests {
     #[test]
     fn chatgpt_is_told_to_paste_and_names_the_file() {
         let dest = destination_for(Target::ChatGpt, Path::new("/p"), Path::new("/h"));
-        let text = next_steps(Target::ChatGpt, &dest);
+        let text = next_steps(Target::ChatGpt, &dest, true);
         assert!(text.contains("paste"));
         assert!(text.contains("pmkit-chatgpt-instructions.md"));
     }
@@ -152,7 +190,7 @@ mod tests {
         for t in [Target::Cowork, Target::ChatGpt, Target::Codex] {
             let dest = destination_for(t, Path::new("/p"), Path::new("/h"));
             assert!(
-                next_steps(t, &dest).contains("not enforced automatically"),
+                next_steps(t, &dest, true).contains("not enforced automatically"),
                 "{}",
                 t.as_str()
             );
@@ -163,7 +201,49 @@ mod tests {
     fn every_target_produces_next_steps() {
         for t in Target::all() {
             let dest = destination_for(t, Path::new("/p"), Path::new("/h"));
-            assert!(!next_steps(t, &dest).trim().is_empty(), "{}", t.as_str());
+            assert!(
+                !next_steps(t, &dest, true).trim().is_empty(),
+                "{}",
+                t.as_str()
+            );
         }
+    }
+
+    /// The load-bearing case from fix round 1: when the settings.json that
+    /// carries a hook-enforced target's gates was refused (the human already
+    /// had one), the closing "next steps" text must NOT claim the gates are
+    /// enforced. Before `next_steps` took `gate_installed`, this target's
+    /// branch was unconditional and always printed the "enforced" sentence
+    /// regardless of what actually landed on disk — this is what pins that
+    /// it no longer does.
+    #[test]
+    fn a_hook_enforced_target_with_a_refused_settings_file_does_not_claim_enforcement() {
+        let dest = destination_for(Target::ClaudeCode, Path::new("/p"), Path::new("/h"));
+        let text = next_steps(Target::ClaudeCode, &dest, false);
+        assert!(
+            !text.contains("The safety gates are enforced here"),
+            "{text}"
+        );
+        assert!(text.contains("not") && text.contains("active"), "{text}");
+    }
+
+    #[test]
+    fn gate_installed_is_false_when_the_settings_file_was_skipped() {
+        let outcomes = vec![Outcome {
+            path: std::path::PathBuf::from("/p/.claude/settings.json"),
+            target: Target::ClaudeCode.as_str().to_string(),
+            action: Action::SkippedModified,
+        }];
+        assert!(!gate_installed(&outcomes, Target::ClaudeCode));
+    }
+
+    #[test]
+    fn gate_installed_is_true_when_the_settings_file_landed() {
+        let outcomes = vec![Outcome {
+            path: std::path::PathBuf::from("/p/.claude/settings.json"),
+            target: Target::ClaudeCode.as_str().to_string(),
+            action: Action::Installed,
+        }];
+        assert!(gate_installed(&outcomes, Target::ClaudeCode));
     }
 }

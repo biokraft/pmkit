@@ -179,32 +179,48 @@ mod tests {
         None
     }
 
+    // Every test below reads the process `PATH` (via `run_push_hook`'s
+    // `None` fallback, which spawns `sh` with the inherited `PATH`) even
+    // though it never mutates it. `doctor::runner`'s tests DO mutate the
+    // process `PATH` under the same `#[serial(env_path)]` key, and `cargo
+    // test` runs tests in the same binary concurrently by default — so
+    // without sharing that key, one of these could spawn `sh` while another
+    // thread has `PATH` set to a scratch dir or emptied, and fail with
+    // "failed to spawn sh: No such file or directory". Serializing on the
+    // same key as the mutators is what actually fixes that, rather than
+    // hoping the flake stays rare.
     #[test]
+    #[serial(env_path)]
     fn a_plain_push_is_blocked() {
         assert_eq!(run_push_hook("git push origin main", None), 2);
     }
 
     #[test]
+    #[serial(env_path)]
     fn a_push_with_flags_is_blocked() {
         assert_eq!(run_push_hook("git push --force", None), 2);
     }
 
     #[test]
+    #[serial(env_path)]
     fn a_push_chained_after_another_command_is_blocked() {
         assert_eq!(run_push_hook("echo hi && git push", None), 2);
     }
 
     #[test]
+    #[serial(env_path)]
     fn an_unrelated_command_is_allowed() {
         assert_eq!(run_push_hook("npm install", None), 0);
     }
 
     #[test]
+    #[serial(env_path)]
     fn extra_whitespace_between_git_and_push_is_still_blocked() {
         assert_eq!(run_push_hook("git  push origin main", None), 2);
     }
 
     #[test]
+    #[serial(env_path)]
     fn a_push_with_git_flags_before_the_subcommand_is_still_blocked() {
         assert_eq!(run_push_hook("git -C /tmp/repo push", None), 2);
     }
