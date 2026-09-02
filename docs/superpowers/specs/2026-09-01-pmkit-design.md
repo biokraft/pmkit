@@ -105,7 +105,7 @@ the skill must do instead when a capability is absent.
 | Target | Emitted to | Gate enforcement |
 | --- | --- | --- |
 | Claude Code | `.claude/skills/pmk-*/SKILL.md` + `settings.json` hooks | prose + PreToolUse hooks (hard block) |
-| Cursor | `.cursor/rules/`, `.cursor/commands/`, `AGENTS.md` | prose + Cursor hooks |
+| Cursor | `.cursor/rules/`, `.cursor/hooks.json`, `AGENTS.md` | prose + `beforeShellExecution` hooks (exit 2 denies) |
 | Codex / ChatGPT Workspace Agents | `.agents/skills/`, `AGENTS.md`, `agents/openai.yaml` | prose; shell available |
 | Cowork | `~/pmkit-cowork/` folder, ready to upload; opened in Finder | prose only |
 | ChatGPT | `pmkit-chatgpt-instructions.md`, copied to clipboard | prose only |
