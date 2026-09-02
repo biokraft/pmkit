@@ -1,8 +1,8 @@
 # pmkit
 
-pmkit installs a safe, human-in-the-loop agentic workflow — shape an idea, build it one reviewed
-step at a time, verify it in a browser, keep the Jira ticket honest — into whichever coding agent
-you actually use. It is a one-shot installer, not a daemon: it writes files and gets out of the way.
+pmkit installs a safe, human-in-the-loop agentic workflow into whichever coding agent
+you actually use: shape an idea, build it one reviewed step at a time, verify it in a browser, keep
+the Jira ticket honest. It writes the files once and gets out of the way; nothing stays running.
 
 ## Install
 
@@ -56,18 +56,18 @@ Two of the five targets back these gates with software: **Claude Code**, via a `
 `.claude/settings.json`, and **Cursor**, via a `beforeShellExecution` hook in `.cursor/hooks.json`.
 Both deny the matching command with exit code 2 before it runs.
 
-Even there, the hook only catches gate 1 — `git push`, `git merge`, `gh pr create`, `gh pr merge`.
+Even there, the hook only catches gate 1: `git push`, `git merge`, `gh pr create`, `gh pr merge`.
 Gates 2 and 3 (Jira writes, anything leaving the machine) are not something a shell hook can see
 coming, so they stay prose everywhere, Claude Code and Cursor included.
 
 **Codex / ChatGPT Workspace Agents, Claude Cowork, and ChatGPT enforce nothing.** All three gates
-are written instructions there and nothing more — no hook, no block, no exit code. If you choose one
+are written instructions there and nothing more. No hook, no block, no exit code. If you choose one
 of these targets, the agent itself is the only thing standing between the human and an action they
 did not ask for. Learn this now, not from an incident.
 
 ## Prerequisites
 
-`pmkit doctor` checks these and never fixes anything without you asking — it is read-only. It prints
+`pmkit doctor` checks these and never fixes anything without you asking. It is read-only. It prints
 two lists: shell commands you can paste and run, and manual steps that happen somewhere else (in an
 agent, in a browser).
 
@@ -95,7 +95,7 @@ pmkit skill uninstall --target claude-code      # remove one target
 pmkit skill uninstall --all                     # remove everything pmkit wrote
 ```
 
-`uninstall` requires either `--target <agent>` or `--all` — there is no bare `pmkit skill uninstall`.
+`uninstall` requires either `--target <agent>` or `--all`. There is no bare `pmkit skill uninstall`.
 
 ## Upgrading
 
@@ -114,7 +114,7 @@ No Homebrew? Install a checked binary directly:
 curl -fsSL https://raw.githubusercontent.com/biokraft/pmkit/main/install.sh | sh
 ```
 
-This drops `pmkit` into `~/.local/bin` (override with `PMKIT_INSTALL_DIR`) — no privilege escalation,
+This drops `pmkit` into `~/.local/bin` (override with `PMKIT_INSTALL_DIR`). No privilege escalation,
 no Rust toolchain required. It supports macOS (arm64, x86_64) and Linux (x86_64, aarch64).
 
 Or grab a prebuilt binary straight from the [release page](https://github.com/biokraft/pmkit/releases)

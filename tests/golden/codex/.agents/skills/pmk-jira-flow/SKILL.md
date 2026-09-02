@@ -32,17 +32,17 @@ state is part of the deliverable.
 | Stopped and handed back | back to To Do, with a comment saying why |
 
 Status names differ per project. Read the real transition list for this ticket rather than guessing
-an ID — transitions are per-workflow, not global.
+an ID. Transitions are per-workflow, not global.
 
 ## Two hard rules
 
 1. **Never write to Jira without showing the exact text first.** Comment, description, transition,
-   field change — print what you are about to send, then wait for an explicit yes.
+   field change: print what you are about to send, then wait for an explicit yes.
 2. **Never transition to Done when acceptance is someone else's call.** A release, a sign-off, a PM
    check. Report it as ready and let the human close it.
 
 ## Style
 
-One transition per real change of state. Do not narrate at length — a single line naming the new
+One transition per real change of state. Do not narrate at length. A single line naming the new
 state is enough. Attach the verification screenshots from `pmk-verify-visually` when you move a
 ticket to review.

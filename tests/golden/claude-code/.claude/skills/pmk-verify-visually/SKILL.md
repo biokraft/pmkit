@@ -34,8 +34,8 @@ the tests.
 ## The rule you cannot rationalise past
 
 Never say a user-visible change "works", "is done", or "looks good" on the basis of code, types, or
-passing tests. If no browser is available, say exactly that instead — "I could not verify this
-visually" — and let the human decide.
+passing tests. If no browser is available, say exactly that: "I could not verify this
+visually." Then let the human decide.
 
 ## Evidence
 

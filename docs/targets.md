@@ -12,7 +12,7 @@ put it there, pmkit leaves it alone and reports it as refused rather than touchi
 
 **Writes:**
 - `.claude/skills/pmk-feature-loop/SKILL.md`, `pmk-shape-idea/`, `pmk-build-safely/`,
-  `pmk-verify-visually/`, `pmk-jira-flow/` — one `SKILL.md` per skill
+  `pmk-verify-visually/`, `pmk-jira-flow/`: one `SKILL.md` per skill
 - `.claude/settings.json` — a `PreToolUse` hook, matcher `Bash`, one entry each for `git push`,
   `git merge`, `gh pr create`, `gh pr merge`
 
@@ -21,7 +21,7 @@ merge pmkit's `PreToolUse` hooks into it yourself, then run `pmkit setup` again 
 the gate landed.
 
 **Gates:** machine-enforced. The hook denies the matching Bash command with exit code 2 before it
-runs, printing the reason to stderr. It only catches gate 1 (push/merge/PR) — Jira writes and
+runs, printing the reason to stderr. It only catches gate 1 (push/merge/PR). Jira writes and
 off-machine commands are prose, same as everywhere else.
 
 **Remove:** `pmkit skill uninstall --target claude-code`
@@ -69,13 +69,13 @@ project you ran `pmkit setup` from.
 - `skills/pmk-feature-loop/SKILL.md` and the other four, one folder per skill
 
 **By hand:** upload each folder under `skills/` as a skill in Cowork yourself. Nothing is
-auto-registered — pmkit only stages the files.
+auto-registered. pmkit only stages the files.
 
 **Gates:** prose only. The staged `README.md` says so, and points at Cursor or Claude Code if you
 want them enforced.
 
 **Remove:** `pmkit skill uninstall --target cowork` deletes the staged bundle under
-`~/pmkit-cowork/`. You still have to remove whatever you uploaded into Cowork itself — pmkit has no
+`~/pmkit-cowork/`. You still have to remove whatever you uploaded into Cowork itself; pmkit has no
 way to reach into Cowork's own storage.
 
 ## ChatGPT
@@ -91,7 +91,7 @@ Also staged under your home directory, since a ChatGPT project has no filesystem
 **Gates:** prose only, same as the rest of the non-hooked targets.
 
 **Remove:** `pmkit skill uninstall --target chatgpt` deletes the staged file under
-`~/pmkit-chatgpt/`. Delete the pasted text from the ChatGPT project yourself — pmkit cannot reach it.
+`~/pmkit-chatgpt/`. Delete the pasted text from the ChatGPT project yourself. pmkit cannot reach it.
 
 ## Removing everything at once
 
