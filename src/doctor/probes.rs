@@ -9,15 +9,34 @@ pub enum ProbeStatus {
     Broken(String),
 }
 
+/// How a probe's remedy is meant to be applied. A `Command` is safe to paste
+/// into a shell as-is; a `Manual` step happens somewhere else entirely (in an
+/// agent, in a browser) and would just error if pasted into a shell.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Fix {
+    /// A shell command the human can paste and run as-is.
+    Command(String),
+    /// Something the human must do somewhere else -- in their agent, in a browser.
+    Manual(String),
+}
+
+impl Fix {
+    pub fn text(&self) -> &str {
+        match self {
+            Fix::Command(s) | Fix::Manual(s) => s,
+        }
+    }
+}
+
 /// One prerequisite: what it is, whether it is there, why a product manager
-/// should care, and the exact command that fixes it. `fix` is never run
-/// without an explicit yes.
+/// should care, and the exact remedy. `fix` is never run without an explicit
+/// yes.
 #[derive(Debug, Clone)]
 pub struct Probe {
     pub name: &'static str,
     pub status: ProbeStatus,
     pub why: &'static str,
-    pub fix: Option<String>,
+    pub fix: Option<Fix>,
 }
 
 const NODE_FLOOR: u32 = 20;
@@ -29,7 +48,7 @@ pub fn probe_git(r: &dyn Runner) -> Probe {
             name: "git",
             status: ProbeStatus::Missing,
             why,
-            fix: Some("brew install git".into()),
+            fix: Some(Fix::Command("brew install git".into())),
         };
     }
     let out = r.run("git", &["--version"]);
@@ -48,7 +67,7 @@ pub fn probe_gh(r: &dyn Runner) -> Probe {
             name: "gh",
             status: ProbeStatus::Missing,
             why,
-            fix: Some("brew install gh".into()),
+            fix: Some(Fix::Command("brew install gh".into())),
         };
     }
     let out = r.run("gh", &["auth", "status"]);
@@ -64,7 +83,7 @@ pub fn probe_gh(r: &dyn Runner) -> Probe {
         name: "gh",
         status: ProbeStatus::Broken("installed but not logged in".into()),
         why,
-        fix: Some("gh auth login".into()),
+        fix: Some(Fix::Command("gh auth login".into())),
     }
 }
 
@@ -75,7 +94,7 @@ pub fn probe_node(r: &dyn Runner) -> Probe {
             name: "node",
             status: ProbeStatus::Missing,
             why,
-            fix: Some("brew install node".into()),
+            fix: Some(Fix::Command("brew install node".into())),
         };
     }
     let out = r.run("node", &["-v"]);
@@ -102,7 +121,7 @@ pub fn probe_node(r: &dyn Runner) -> Probe {
                 out.stdout.trim()
             )),
             why,
-            fix: Some("brew upgrade node".into()),
+            fix: Some(Fix::Command("brew upgrade node".into())),
         }
     }
 }
@@ -122,7 +141,7 @@ pub fn probe_playwright(r: &dyn Runner) -> Probe {
         name: "playwright",
         status: ProbeStatus::Missing,
         why,
-        fix: Some("npx playwright install chromium".into()),
+        fix: Some(Fix::Command("npx playwright install chromium".into())),
     }
 }
 
@@ -138,7 +157,7 @@ pub fn probe_jq(r: &dyn Runner) -> Probe {
             name: "jq",
             status: ProbeStatus::Missing,
             why,
-            fix: Some("brew install jq".into()),
+            fix: Some(Fix::Command("brew install jq".into())),
         };
     }
     Probe {
@@ -164,9 +183,9 @@ pub fn probe_superpowers(r: &dyn Runner, home: &Path) -> Probe {
         name: "superpowers",
         status: ProbeStatus::Missing,
         why,
-        fix: Some(
+        fix: Some(Fix::Manual(
             "in your agent, install the Superpowers plugin from the official marketplace".into(),
-        ),
+        )),
     }
 }
 
@@ -203,7 +222,9 @@ pub fn probe_jira(r: &dyn Runner) -> Probe {
             name: "jira",
             status: ProbeStatus::Missing,
             why,
-            fix: Some("brew install acli && acli jira auth login".into()),
+            fix: Some(Fix::Command(
+                "brew install acli && acli jira auth login".into(),
+            )),
         },
     }
 }
@@ -266,8 +287,8 @@ mod tests {
         let p = probe_git(&r);
         assert_eq!(p.status, ProbeStatus::Missing);
         let fix = p.fix.unwrap();
-        assert_eq!(fix, "brew install git");
-        assert!(!fix.contains("sudo"));
+        assert_eq!(fix, Fix::Command("brew install git".into()));
+        assert!(!fix.text().contains("sudo"));
     }
 
     #[test]
@@ -284,9 +305,17 @@ mod tests {
         let r = FakeRunner::new();
         for p in run_all(&r, Path::new("/h")) {
             if let Some(fix) = p.fix {
-                assert!(!fix.contains("sudo"), "{}: {}", p.name, fix);
+                let text = fix.text();
+                assert!(!text.contains("sudo"), "{}: {}", p.name, text);
             }
         }
+    }
+
+    #[test]
+    fn superpowers_fix_is_manual_not_a_shell_command() {
+        let r = FakeRunner::new();
+        let p = probe_superpowers(&r, Path::new("/h"));
+        assert!(matches!(p.fix, Some(Fix::Manual(_))));
     }
 
     #[test]
@@ -294,7 +323,7 @@ mod tests {
         let r = FakeRunner::new().with("gh", 1, "You are not logged into any GitHub hosts");
         let p = probe_gh(&r);
         assert!(matches!(p.status, ProbeStatus::Broken(_)));
-        assert_eq!(p.fix.as_deref(), Some("gh auth login"));
+        assert_eq!(p.fix, Some(Fix::Command("gh auth login".into())));
     }
 
     #[test]

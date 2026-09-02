@@ -90,6 +90,7 @@ fn settings_json() -> String {
 mod tests {
     use super::*;
     use crate::target::destination_for;
+    use serial_test::serial;
     use std::io::Write;
     use std::path::PathBuf;
     use std::process::{Command, Stdio};
@@ -209,6 +210,7 @@ mod tests {
     }
 
     #[test]
+    #[serial(env_path)]
     fn a_missing_jq_fails_closed_rather_than_silently_allowing() {
         let path = path_without_jq();
         assert_eq!(run_push_hook("git push origin main", Some(&path)), 2);

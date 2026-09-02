@@ -126,12 +126,35 @@ fn main() -> anyhow::Result<()> {
             let probes =
                 pmkit::doctor::probes::run_all(&pmkit::doctor::runner::RealRunner, &home_dir());
             println!("{}", pmkit::doctor::table(&probes));
-            let fixes: Vec<String> = probes.iter().filter_map(|p| p.fix.clone()).collect();
-            if !fixes.is_empty() {
-                println!("\nTo fix, run:");
-                for f in &fixes {
-                    println!("  {f}");
+
+            let commands: Vec<&str> = probes
+                .iter()
+                .filter_map(|p| match &p.fix {
+                    Some(pmkit::doctor::probes::Fix::Command(c)) => Some(c.as_str()),
+                    _ => None,
+                })
+                .collect();
+            let manual: Vec<&str> = probes
+                .iter()
+                .filter_map(|p| match &p.fix {
+                    Some(pmkit::doctor::probes::Fix::Manual(m)) => Some(m.as_str()),
+                    _ => None,
+                })
+                .collect();
+
+            if !commands.is_empty() {
+                println!("\nRun these:");
+                for c in &commands {
+                    println!("  {c}");
                 }
+            }
+            if !manual.is_empty() {
+                println!("\nThen, by hand:");
+                for m in &manual {
+                    println!("  {m}");
+                }
+            }
+            if !commands.is_empty() || !manual.is_empty() {
                 println!("\npmkit will not run these for you. Copy the ones you want.");
             }
             Ok(())
