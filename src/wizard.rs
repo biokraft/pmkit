@@ -63,12 +63,12 @@ pub fn next_steps(target: Target, dest: &Destination, gate_installed: bool) -> S
 /// don't enforce gates with hooks have no such file to check, so they
 /// trivially report `true` — `next_steps` never consults the flag for them.
 fn gate_installed(outcomes: &[Outcome], target: Target) -> bool {
-    if !target.enforces_gates_with_hooks() {
+    let Some(relpath) = target.gate_config_relpath() else {
         return true;
-    }
+    };
     outcomes.iter().any(|o| {
         o.target == target.as_str()
-            && o.path.file_name().is_some_and(|f| f == "settings.json")
+            && o.path.ends_with(relpath)
             && matches!(
                 o.action,
                 Action::Installed | Action::Refreshed | Action::Unchanged
@@ -245,5 +245,31 @@ mod tests {
             action: Action::Installed,
         }];
         assert!(gate_installed(&outcomes, Target::ClaudeCode));
+    }
+
+    /// The bug this task fixes: `gate_installed` used to look for a literal
+    /// `settings.json` outcome, which Cursor never produces, so a perfectly
+    /// successful Cursor setup — its `hooks.json` installed — was reported
+    /// as having its safety gates NOT active. With `gate_config_relpath`
+    /// asking the right question per target, a successful Cursor install
+    /// must claim enforcement.
+    #[test]
+    fn a_successful_cursor_setup_claims_enforcement() {
+        let outcomes = vec![Outcome {
+            path: std::path::PathBuf::from("/p/.cursor/hooks.json"),
+            target: Target::Cursor.as_str().to_string(),
+            action: Action::Installed,
+        }];
+        assert!(gate_installed(&outcomes, Target::Cursor));
+        let dest = destination_for(Target::Cursor, Path::new("/p"), Path::new("/h"));
+        let text = next_steps(
+            Target::Cursor,
+            &dest,
+            gate_installed(&outcomes, Target::Cursor),
+        );
+        assert!(
+            text.contains("The safety gates are enforced here"),
+            "{text}"
+        );
     }
 }

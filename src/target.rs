@@ -60,6 +60,18 @@ impl Target {
     pub fn enforces_gates_with_hooks(self) -> bool {
         matches!(self, Target::ClaudeCode | Target::Cursor)
     }
+
+    /// Where this target's hook/settings file lands, relative to its
+    /// destination root — the file `gate_installed` must find an outcome
+    /// for to say enforcement actually landed. `None` for the three
+    /// prose-only targets, which have no such file.
+    pub fn gate_config_relpath(self) -> Option<&'static str> {
+        match self {
+            Target::ClaudeCode => Some(".claude/settings.json"),
+            Target::Cursor => Some(".cursor/hooks.json"),
+            Target::Codex | Target::Cowork | Target::ChatGpt => None,
+        }
+    }
 }
 
 impl std::str::FromStr for Target {
@@ -134,6 +146,24 @@ mod tests {
             .map(|t| t.as_str())
             .collect();
         assert_eq!(hooked, vec!["claude-code", "cursor"]);
+    }
+
+    #[test]
+    fn gate_config_relpath_matches_enforcement_and_only_hooked_targets_have_one() {
+        for t in Target::all() {
+            assert_eq!(
+                t.gate_config_relpath().is_some(),
+                t.enforces_gates_with_hooks()
+            );
+        }
+        assert_eq!(
+            Target::ClaudeCode.gate_config_relpath(),
+            Some(".claude/settings.json")
+        );
+        assert_eq!(
+            Target::Cursor.gate_config_relpath(),
+            Some(".cursor/hooks.json")
+        );
     }
 
     #[test]

@@ -3,6 +3,7 @@ pub mod claude_code;
 pub mod codex;
 pub mod cowork;
 pub mod cursor;
+mod cursor_hooks;
 
 use crate::capabilities::Capabilities;
 use crate::preamble::preamble;

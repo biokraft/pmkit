@@ -11,7 +11,7 @@ use crate::target::{Destination, Target};
 /// match exits 2 (blocked, message on stderr) and a non-match exits 0
 /// (allowed) — never anything in between, and never nonzero on the pass
 /// path, which would otherwise block *every* Bash call rather than none.
-const BLOCKED: &[(&str, &str)] = &[
+pub(crate) const BLOCKED: &[(&str, &str)] = &[
     (
         "git( [^ ]+)* push",
         "pmkit: `git push` needs an explicit yes from the human. Show the branch and target, then ask.",

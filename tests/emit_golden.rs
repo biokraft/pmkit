@@ -55,6 +55,16 @@ fn codex_emits_both_agents_md_and_the_workspace_agents_metadata() {
 }
 
 #[test]
+fn cursor_emits_a_hooks_file_alongside_its_rules() {
+    use pmkit::emit::FileKind;
+    let dest = destination_for(Target::Cursor, Path::new("/p"), Path::new("/h"));
+    let files = plan_files(Target::Cursor, &Capabilities::all_present(), &dest);
+    assert!(files
+        .iter()
+        .any(|f| f.path == Path::new("/p/.cursor/hooks.json") && f.kind == FileKind::Config));
+}
+
+#[test]
 fn cowork_matches_its_golden_files() {
     check(Target::Cowork);
 }
