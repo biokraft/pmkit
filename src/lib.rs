@@ -1,6 +1,8 @@
 //! pmkit — installs a safe, human-in-the-loop agentic workflow into the agent a
 //! product manager already uses.
 
+#![forbid(unsafe_code)]
+
 pub mod capabilities;
 pub mod commands;
 pub mod doctor;

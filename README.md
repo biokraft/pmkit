@@ -1,5 +1,12 @@
 # pmkit
 
+[![CI](https://github.com/biokraft/pmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/biokraft/pmkit/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/pmkit.svg)](https://crates.io/crates/pmkit)
+[![release](https://img.shields.io/github/v/release/biokraft/pmkit?sort=semver)](https://github.com/biokraft/pmkit/releases/latest)
+[![MSRV](https://img.shields.io/badge/MSRV-1.88-blue)](https://github.com/biokraft/pmkit)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![unsafe forbidden](https://img.shields.io/badge/unsafe-forbidden-brightgreen)](https://github.com/rust-secure-code/safety-dance)
+
 pmkit installs a safe, human-in-the-loop agentic workflow into whichever coding agent
 you actually use: shape an idea, build it one reviewed step at a time, verify it in a browser, keep
 the Jira ticket honest. It writes the files once and gets out of the way; nothing stays running.

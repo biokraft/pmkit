@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use clap::{Args, Parser, Subcommand};
 use pmkit::capabilities::Capabilities;
 use pmkit::commands::{home_dir, state_file};
