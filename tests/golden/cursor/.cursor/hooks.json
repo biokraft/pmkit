@@ -3,16 +3,16 @@
   "hooks": {
     "beforeShellExecution": [
       {
-        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* push' && { echo 'pmkit: `git push` needs an explicit yes from the human. Show the branch and target, then ask.' >&2; exit 2; }; exit 0"
+        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* push' && { echo 'pmkit: `git push` needs an explicit yes from the human. Show the branch and target, then ask.' >&2; printf '%s' '{\"permission\":\"deny\"}'; exit 2; }; printf '%s' '{\"permission\":\"allow\"}'; exit 0"
       },
       {
-        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* merge' && { echo 'pmkit: merging needs an explicit yes from the human.' >&2; exit 2; }; exit 0"
+        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* merge' && { echo 'pmkit: merging needs an explicit yes from the human.' >&2; printf '%s' '{\"permission\":\"deny\"}'; exit 2; }; printf '%s' '{\"permission\":\"allow\"}'; exit 0"
       },
       {
-        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* create' && { echo 'pmkit: opening a pull request needs an explicit yes from the human.' >&2; exit 2; }; exit 0"
+        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* create' && { echo 'pmkit: opening a pull request needs an explicit yes from the human.' >&2; printf '%s' '{\"permission\":\"deny\"}'; exit 2; }; printf '%s' '{\"permission\":\"allow\"}'; exit 0"
       },
       {
-        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* merge' && { echo 'pmkit: merging a pull request needs an explicit yes from the human.' >&2; exit 2; }; exit 0"
+        "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* merge' && { echo 'pmkit: merging a pull request needs an explicit yes from the human.' >&2; printf '%s' '{\"permission\":\"deny\"}'; exit 2; }; printf '%s' '{\"permission\":\"allow\"}'; exit 0"
       }
     ]
   },

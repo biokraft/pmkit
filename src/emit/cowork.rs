@@ -13,6 +13,8 @@ pub fn plan(caps: &Capabilities, dest: &Destination) -> Vec<EmitFile> {
         contents: format!(
             "# pmkit skills for Claude Cowork\n\n\
              Upload each folder in `skills/` as a skill in Cowork.\n\n\
+             Then start a chat and say \"use the pmkit loop\" — `pmk-feature-loop` is the only \
+             skill you need to remember.\n\n\
              {}\n\
              The safety gates in these skills are prose only on Cowork — nothing blocks a command \
              for you there. If you want them machine-enforced, use Cursor or Claude Code.\n",

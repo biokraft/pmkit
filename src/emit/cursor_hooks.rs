@@ -15,7 +15,8 @@ fn hook_command(pattern: &str, message: &str) -> String {
     format!(
         "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.command // \"\"' 2>/dev/null); \
          [ -n \"$cmd\" ] || cmd=$raw; \
-         printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq '{pattern}' && {{ echo '{message}' >&2; exit 2; }}; exit 0"
+         printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq '{pattern}' && {{ echo '{message}' >&2; printf '%s' '{{\"permission\":\"deny\"}}'; exit 2; }}; \
+         printf '%s' '{{\"permission\":\"allow\"}}'; exit 0"
     )
 }
 
@@ -88,6 +89,13 @@ mod tests {
     /// `extra_path` is prepended to `PATH` so a test can simulate `jq` being
     /// unavailable by pointing it at a directory that does not contain it.
     fn run_push_hook(command_value: &str, extra_path: Option<&str>) -> i32 {
+        run_push_hook_full(command_value, extra_path).0
+    }
+
+    /// Same as `run_push_hook` but also returns stdout, so tests can assert
+    /// on Cursor's `{"permission": ...}` JSON deny/allow document alongside
+    /// the exit code.
+    fn run_push_hook_full(command_value: &str, extra_path: Option<&str>) -> (i32, String) {
         let dest = destination_for(Target::Cursor, &PathBuf::from("/p"), &PathBuf::from("/h"));
         let files = super::super::cursor::plan(&Capabilities::all_present(), &dest);
         let cfg = files
@@ -113,7 +121,7 @@ mod tests {
             .env_clear()
             .env("PATH", path)
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
             .expect("failed to spawn sh");
@@ -126,8 +134,11 @@ mod tests {
             .write_all(payload.to_string().as_bytes())
             .unwrap();
 
-        let status = child.wait().unwrap();
-        status.code().unwrap_or(-1)
+        let output = child.wait_with_output().unwrap();
+        (
+            output.status.code().unwrap_or(-1),
+            String::from_utf8_lossy(&output.stdout).into_owned(),
+        )
     }
 
     /// A PATH built from symlinks to the tools the hook needs (`sh`, `cat`,
@@ -192,6 +203,24 @@ mod tests {
     #[serial(env_path)]
     fn a_push_with_git_flags_before_the_subcommand_is_still_blocked() {
         assert_eq!(run_push_hook("git -C /tmp/repo push", None), 2);
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn a_blocked_command_emits_both_exit_code_and_deny_document() {
+        let (code, stdout) = run_push_hook_full("git push origin main", None);
+        assert_eq!(code, 2);
+        let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).unwrap();
+        assert_eq!(parsed["permission"], "deny");
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn an_allowed_command_emits_both_exit_code_and_allow_document() {
+        let (code, stdout) = run_push_hook_full("npm install", None);
+        assert_eq!(code, 0);
+        let parsed: serde_json::Value = serde_json::from_str(stdout.trim()).unwrap();
+        assert_eq!(parsed["permission"], "allow");
     }
 
     #[test]

@@ -2,6 +2,8 @@
 
 Upload each folder in `skills/` as a skill in Cowork.
 
+Then start a chat and say "use the pmkit loop" — `pmk-feature-loop` is the only skill you need to remember.
+
 - `pmk-feature-loop` — the front door: route an idea into the right stage
 - `pmk-shape-idea` — turn a rough idea into a spec you have agreed to
 - `pmk-build-safely` — build a spec one small reviewed task at a time

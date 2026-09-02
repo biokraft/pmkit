@@ -12,7 +12,9 @@ The safety gates in this skill are **prose only** here: nothing on this surface 
 
 You have **no shell** on this surface. When a step needs a command, print it in a copyable block and ask the human to run it and paste the output. Never claim a command's result you did not see.
 
-A browser is available through Playwright. Use it to verify UI work.
+**You CANNOT verify anything visually** — no browser is available. Say so plainly instead of implying the change was checked.
+
+`gh` is not installed, so you cannot open a pull request. Stop after committing and tell the human.
 
 Jira access is through the `acli` command line tool, but you have **no shell** on this surface. Print the `acli` command in a copyable block and ask the human to run it and paste the output. Never claim a Jira read or write you did not see the human run.
 

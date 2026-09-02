@@ -26,7 +26,7 @@ enum Command {
         #[arg(long, value_parser = parse_target)]
         target: Option<Target>,
     },
-    /// Check the tools pmkit relies on and offer to fix what is missing.
+    /// Show what pmkit needs that is missing, and the commands to fix it yourself.
     Doctor,
     /// Install, list, refresh or remove the pmkit skills.
     #[command(subcommand)]
@@ -63,10 +63,10 @@ fn parse_target(s: &str) -> Result<Target, String> {
 #[derive(Args)]
 struct UninstallArg {
     /// Which agent to remove. Omit and pass --all to remove every target.
-    #[arg(long, value_parser = parse_target)]
+    #[arg(long, value_parser = parse_target, conflicts_with = "all")]
     target: Option<Target>,
     /// Remove every target pmkit installed. Required if --target is omitted.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "target")]
     all: bool,
 }
 
@@ -135,14 +135,14 @@ fn main() -> anyhow::Result<()> {
             let dir = std::env::current_dir()?;
             let home = home_dir();
             let state = state_file();
-            let targets: Vec<Target> = match target {
-                Some(t) => vec![t],
-                None => Target::all().to_vec(),
-            };
             if yes {
+                let targets: Vec<Target> = match target {
+                    Some(t) => vec![t],
+                    None => Target::all().to_vec(),
+                };
                 pmkit::wizard::run_unattended(&targets, &dir, &home, &state)?;
             } else {
-                pmkit::wizard::run(&dir, &home, &state)?;
+                pmkit::wizard::run(&dir, &home, &state, target)?;
             }
             Ok(())
         }

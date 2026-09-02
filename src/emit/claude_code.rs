@@ -95,6 +95,20 @@ mod tests {
     use std::path::PathBuf;
     use std::process::{Command, Stdio};
 
+    /// Every BLOCKED message is interpolated inside a single-quoted shell
+    /// string (`echo '...'`) in the emitted hook. A `'` inside the message
+    /// would close that quote early and break the emitted shell command, so
+    /// this pins that none of the messages contain one.
+    #[test]
+    fn no_blocked_message_contains_an_apostrophe_that_would_break_shell_quoting() {
+        for (pattern, message) in BLOCKED {
+            assert!(
+                !message.contains('\''),
+                "message for pattern {pattern:?} contains an apostrophe: {message:?}"
+            );
+        }
+    }
+
     /// Runs the emitted `push` hook command against a raw `tool_input.command`
     /// value, exactly as Claude Code would feed it: the hook's JSON payload on
     /// stdin. Returns the process exit code. `extra_path` is prepended to

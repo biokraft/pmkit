@@ -39,7 +39,7 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
         );
     }
 
-    if caps.playwright {
+    if caps.playwright && target.is_in_repo() {
         out.push_str("A browser is available through Playwright. Use it to verify UI work.\n\n");
     } else {
         out.push_str(
@@ -55,7 +55,7 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
         );
     }
 
-    if !caps.gh {
+    if !caps.gh || !target.is_in_repo() {
         out.push_str(
             "`gh` is not installed, so you cannot open a pull request. Stop after committing and \
              tell the human.\n\n",
@@ -183,6 +183,22 @@ mod tests {
         };
         let text = preamble(Target::ClaudeCode, &caps);
         assert!(text.contains("Superpowers is NOT available"));
+    }
+
+    #[test]
+    fn cowork_with_all_caps_still_cannot_verify_visually_or_use_gh() {
+        let text = preamble(Target::Cowork, &Capabilities::all_present());
+        assert!(text.contains("You CANNOT verify anything visually"));
+        assert!(!text.contains("A browser is available"));
+        assert!(text.contains("cannot open a pull request"));
+    }
+
+    #[test]
+    fn chatgpt_with_all_caps_still_cannot_verify_visually_or_use_gh() {
+        let text = preamble(Target::ChatGpt, &Capabilities::all_present());
+        assert!(text.contains("You CANNOT verify anything visually"));
+        assert!(!text.contains("A browser is available"));
+        assert!(text.contains("cannot open a pull request"));
     }
 
     #[test]

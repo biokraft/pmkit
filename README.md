@@ -14,8 +14,9 @@ brew install biokraft/tap/pmkit
 
 Run `pmkit setup` inside the project you want it in. It asks, one question at a time:
 
-- which of the five targets below you use (or `--yes` to install into every one it detects, `--target
-  <agent>` to install into just one)
+- which of the five targets below you use (or `--yes` to install into every target, `--target
+  <agent>` to install into just one, then remove any others later with `pmkit skill uninstall
+  --target <agent>`)
 - nothing else — there is no API key, no account, no network call beyond what `pmkit doctor`'s
   probes make to check whether your local tools are installed
 

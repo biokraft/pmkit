@@ -153,16 +153,25 @@ pub fn is_pmkit_path(path: &Path) -> bool {
         .unwrap_or_default()
         .to_string_lossy()
         .to_string();
-    if matches!(
-        name.as_str(),
-        "AGENTS.md"
-            | "settings.json"
-            | "hooks.json"
-            | "README.md"
-            | "openai.yaml"
-            | "pmkit-chatgpt-instructions.md"
-    ) {
-        return true;
+    let parent_name = path
+        .parent()
+        .and_then(|p| p.file_name())
+        .map(|d| d.to_string_lossy().to_string());
+    // `settings.json`, `hooks.json` and `openai.yaml` are generic filenames
+    // that could belong to anything, so they only count as pmkit's if they
+    // sit under the parent directory pmkit actually writes them into
+    // (`.claude`, `.cursor`, `agents`). `AGENTS.md`, `README.md` and
+    // `pmkit-chatgpt-instructions.md` have no such distinguishing parent —
+    // pmkit writes them at arbitrary/root-ish locations — so they are
+    // matched by name alone; for those the `created` flag recorded on the
+    // tracked entry is the only thing standing between pmkit and touching a
+    // file it did not write.
+    match (name.as_str(), parent_name.as_deref()) {
+        ("settings.json", Some(".claude")) => return true,
+        ("hooks.json", Some(".cursor")) => return true,
+        ("openai.yaml", Some("agents")) => return true,
+        ("AGENTS.md", _) | ("README.md", _) | ("pmkit-chatgpt-instructions.md", _) => return true,
+        _ => {}
     }
     if name != "SKILL.md" {
         return false;
@@ -539,6 +548,7 @@ mod tests {
     fn is_pmkit_path_accepts_cursor_hooks_json_and_still_rejects_arbitrary_paths() {
         assert!(is_pmkit_path(std::path::Path::new("/p/.cursor/hooks.json")));
         assert!(!is_pmkit_path(std::path::Path::new("/etc/passwd")));
+        assert!(!is_pmkit_path(std::path::Path::new("/tmp/hooks.json")));
     }
 
     /// Fix round 1, Finding 2: this is the systemic gap — every prior test

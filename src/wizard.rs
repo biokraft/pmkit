@@ -30,11 +30,13 @@ pub fn next_steps(target: Target, dest: &Destination, gate_installed: bool) -> S
              blocked until you say yes."
                 .to_string()
         } else {
-            "The safety gates are NOT active here: pmkit could not write its settings.json hook \
-             because you already had one, so push, merge and pull-request commands are not \
-             blocked yet. Merge pmkit's hook into your settings.json by hand, then run `pmkit \
-             setup` again."
-                .to_string()
+            let relpath = target.gate_config_relpath().unwrap_or("its settings file");
+            format!(
+                "The safety gates are NOT active here: pmkit could not write its {relpath} hook \
+                 because you already had one, so push, merge and pull-request commands are not \
+                 blocked yet. Merge pmkit's hook into your {relpath} by hand, then run `pmkit \
+                 setup` again."
+            )
         }
     } else {
         "The safety gates here are written instructions, not enforced automatically. Read them \
@@ -160,15 +162,25 @@ pub fn run_unattended(
 
 /// Interactive setup. Asks which agents the human uses, shows the doctor's
 /// table, asks before offering any fix, then emits.
-pub fn run(project_dir: &Path, home: &Path, state_file: &Path) -> Result<()> {
-    let options: Vec<&'static str> = Target::all().iter().map(|t| t.label()).collect();
-    let chosen = inquire::MultiSelect::new("Which agents do you use?", options.clone())
-        .prompt()
-        .unwrap_or_default();
-    let targets: Vec<Target> = Target::all()
-        .into_iter()
-        .filter(|t| chosen.contains(&t.label()))
-        .collect();
+pub fn run(
+    project_dir: &Path,
+    home: &Path,
+    state_file: &Path,
+    preselected: Option<Target>,
+) -> Result<()> {
+    let targets: Vec<Target> = match preselected {
+        Some(t) => vec![t],
+        None => {
+            let options: Vec<&'static str> = Target::all().iter().map(|t| t.label()).collect();
+            let chosen = inquire::MultiSelect::new("Which agents do you use?", options.clone())
+                .prompt()
+                .unwrap_or_default();
+            Target::all()
+                .into_iter()
+                .filter(|t| chosen.contains(&t.label()))
+                .collect()
+        }
+    };
     if targets.is_empty() {
         println!("Nothing selected, so nothing was written.");
         return Ok(());
@@ -246,6 +258,14 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("not") && text.contains("active"), "{text}");
+    }
+
+    #[test]
+    fn a_cursor_refusal_names_the_cursor_hooks_file_not_settings_json() {
+        let dest = destination_for(Target::Cursor, Path::new("/p"), Path::new("/h"));
+        let text = next_steps(Target::Cursor, &dest, false);
+        assert!(text.contains(".cursor/hooks.json"), "{text}");
+        assert!(!text.contains("settings.json"), "{text}");
     }
 
     #[test]
