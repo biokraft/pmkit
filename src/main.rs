@@ -2,7 +2,8 @@
 
 use clap::{Args, Parser, Subcommand};
 use pmkit::capabilities::Capabilities;
-use pmkit::commands::{home_dir, state_file};
+use pmkit::commands::{home_dir, resolve_forge, state_file};
+use pmkit::forge::Forge;
 use pmkit::target::Target;
 
 /// Blueprint setup for product managers who work with coding agents.
@@ -27,9 +28,18 @@ enum Command {
         /// Only set up this one agent.
         #[arg(long, value_parser = parse_target)]
         target: Option<Target>,
+        /// Where your team hosts code: github, bitbucket, or both. Detected
+        /// from the git remote when omitted.
+        #[arg(long, value_parser = parse_forge)]
+        forge: Option<Forge>,
     },
     /// Show what pmkit needs that is missing, and the commands to fix it yourself.
-    Doctor,
+    Doctor {
+        /// Where your team hosts code: github, bitbucket, or both. Detected
+        /// from the git remote when omitted.
+        #[arg(long, value_parser = parse_forge)]
+        forge: Option<Forge>,
+    },
     /// Install, list, refresh or remove the pmkit skills.
     #[command(subcommand)]
     Skill(SkillCmd),
@@ -43,7 +53,7 @@ enum SkillCmd {
     List,
     /// Re-emit whatever targets are already tracked, without restoring files
     /// that were deliberately deleted.
-    Refresh,
+    Refresh(ForgeArg),
     /// Remove the files pmkit wrote for one target, or every target with `--all`.
     Uninstall(UninstallArg),
 }
@@ -56,10 +66,26 @@ struct TargetArg {
     /// The project to write into. Defaults to the current directory.
     #[arg(long)]
     dir: Option<std::path::PathBuf>,
+    /// Where your team hosts code: github, bitbucket, or both. Detected
+    /// from the git remote when omitted.
+    #[arg(long, value_parser = parse_forge)]
+    forge: Option<Forge>,
+}
+
+#[derive(Args)]
+struct ForgeArg {
+    /// Where your team hosts code: github, bitbucket, or both. Detected
+    /// from the git remote when omitted.
+    #[arg(long, value_parser = parse_forge)]
+    forge: Option<Forge>,
 }
 
 fn parse_target(s: &str) -> Result<Target, String> {
     s.parse::<Target>().map_err(|e| e.to_string())
+}
+
+fn parse_forge(s: &str) -> Result<Forge, String> {
+    s.parse::<Forge>().map_err(|e| e.to_string())
 }
 
 #[derive(Args)]
@@ -85,13 +111,12 @@ fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
             // Capabilities come from the doctor in `pmkit setup`; a bare
             // `skill install` assumes the best case and lets the preamble be
             // corrected on the next setup run.
-            let out = pmkit::commands::skill::install(
-                &targets,
-                &dir,
-                &home,
-                &Capabilities::all_present(),
-                &state,
-            )?;
+            let forge = resolve_forge(arg.forge, &dir);
+            let caps = Capabilities {
+                forge,
+                ..Capabilities::all_present()
+            };
+            let out = pmkit::commands::skill::install(&targets, &dir, &home, &caps, &state)?;
             for o in out {
                 println!("{:<12} {}", o.action.as_str(), o.path.display());
             }
@@ -106,11 +131,14 @@ fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
                 );
             }
         }
-        SkillCmd::Refresh => {
+        SkillCmd::Refresh(arg) => {
             let dir = std::env::current_dir()?;
-            for o in
-                pmkit::commands::skill::refresh(&dir, &home, &Capabilities::all_present(), &state)?
-            {
+            let forge = resolve_forge(arg.forge, &dir);
+            let caps = Capabilities {
+                forge,
+                ..Capabilities::all_present()
+            };
+            for o in pmkit::commands::skill::refresh(&dir, &home, &caps, &state)? {
                 println!("{:<12} {}", o.action.as_str(), o.path.display());
             }
         }
@@ -133,7 +161,7 @@ fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Some(Command::Setup { yes, target }) => {
+        Some(Command::Setup { yes, target, forge }) => {
             let dir = std::env::current_dir()?;
             let home = home_dir();
             let state = state_file();
@@ -142,17 +170,25 @@ fn main() -> anyhow::Result<()> {
                     Some(t) => vec![t],
                     None => Target::all().to_vec(),
                 };
-                pmkit::wizard::run_unattended(&targets, &dir, &home, &state)?;
+                pmkit::wizard::run_unattended(
+                    &targets,
+                    &dir,
+                    &home,
+                    &state,
+                    resolve_forge(forge, &dir),
+                )?;
             } else {
-                pmkit::wizard::run(&dir, &home, &state, target)?;
+                pmkit::wizard::run(&dir, &home, &state, target, forge)?;
             }
             Ok(())
         }
-        Some(Command::Doctor) => {
+        Some(Command::Doctor { forge }) => {
+            let dir = std::env::current_dir()?;
+            let forge = resolve_forge(forge, &dir);
             let probes = pmkit::doctor::probes::run_all(
                 &pmkit::doctor::runner::RealRunner,
                 &home_dir(),
-                pmkit::forge::Forge::GitHub,
+                forge,
             );
             println!("{}", pmkit::doctor::table(&probes));
 

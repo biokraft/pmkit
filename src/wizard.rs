@@ -1,7 +1,7 @@
 use crate::capabilities::Capabilities;
 use crate::doctor::{probes, runner::RealRunner, table};
 use crate::error::Result;
-use crate::forge::Forge;
+use crate::forge::{detect_forge, Forge};
 use crate::state::{Action, Outcome};
 use crate::target::{destination_for, Destination, Target};
 use std::path::Path;
@@ -86,10 +86,11 @@ pub fn run_unattended(
     project_dir: &Path,
     home: &Path,
     state_file: &Path,
+    forge: Forge,
 ) -> Result<()> {
-    let probes = probes::run_all(&RealRunner, home, Forge::GitHub);
+    let probes = probes::run_all(&RealRunner, home, forge);
     println!("{}", table(&probes));
-    let caps = probes::capabilities_from(&probes, Forge::GitHub);
+    let caps = probes::capabilities_from(&probes, forge);
 
     let outcomes = crate::commands::skill::install(targets, project_dir, home, &caps, state_file)?;
     println!();
@@ -158,6 +159,19 @@ pub fn run_unattended(
              agent, then run `pmkit setup` again so the skills stop warning about it."
         );
     }
+    if forge.includes_github() && !caps.gh {
+        println!(
+            "The GitHub CLI is not ready, so your agent cannot open pull requests on GitHub. \
+             Run `brew install gh && gh auth login`, then run `pmkit setup` again."
+        );
+    }
+    if forge.includes_bitbucket() && !caps.bb {
+        println!(
+            "The Bitbucket Cloud CLI is not ready, so your agent cannot open pull requests on \
+             Bitbucket. Run `brew install biokraft/tap/bb && bb auth login`, then run `pmkit \
+             setup` again."
+        );
+    }
     Ok(())
 }
 
@@ -168,6 +182,7 @@ pub fn run(
     home: &Path,
     state_file: &Path,
     preselected: Option<Target>,
+    forge: Option<Forge>,
 ) -> Result<()> {
     let targets: Vec<Target> = match preselected {
         Some(t) => vec![t],
@@ -186,7 +201,26 @@ pub fn run(
         println!("Nothing selected, so nothing was written.");
         return Ok(());
     }
-    run_unattended(&targets, project_dir, home, state_file)
+    let forge = match forge {
+        Some(f) => f,
+        None => {
+            let detected = detect_forge(project_dir, &RealRunner).unwrap_or(Forge::GitHub);
+            let options: Vec<&'static str> = Forge::all().iter().map(|f| f.label()).collect();
+            let start = Forge::all()
+                .iter()
+                .position(|f| *f == detected)
+                .unwrap_or(0);
+            let chosen = inquire::Select::new("Where does your team host code?", options)
+                .with_starting_cursor(start)
+                .prompt()
+                .ok();
+            Forge::all()
+                .into_iter()
+                .find(|f| Some(f.label()) == chosen)
+                .unwrap_or(detected)
+        }
+    };
+    run_unattended(&targets, project_dir, home, state_file, forge)
 }
 
 #[cfg(test)]
