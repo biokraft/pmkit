@@ -1,0 +1,43 @@
+{
+  "$comment": "Written by pmkit. Edit freely — pmkit detects your changes and will not overwrite them.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.tool_input.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* push' && { echo 'pmkit: `git push` needs an explicit yes from the human. Show the branch and target, then ask.' >&2; exit 2; }; exit 0",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.tool_input.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'git( [^ ]+)* merge' && { echo 'pmkit: merging needs an explicit yes from the human.' >&2; exit 2; }; exit 0",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.tool_input.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* create' && { echo 'pmkit: opening a pull request needs an explicit yes from the human.' >&2; exit 2; }; exit 0",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.tool_input.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'gh( [^ ]+)* pr( [^ ]+)* merge' && { echo 'pmkit: merging a pull request needs an explicit yes from the human.' >&2; exit 2; }; exit 0",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ]
+  }
+}

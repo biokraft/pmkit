@@ -1,0 +1,8 @@
+# Written by pmkit. Edit freely — pmkit detects your changes and will not overwrite them.
+interface:
+  display_name: "pmkit — the product manager's loop"
+  short_description: "Shape an idea, build it one reviewed step at a time, verify it, keep the ticket honest."
+  default_prompt: "Use the pmkit loop."
+
+policy:
+  allow_implicit_invocation: true

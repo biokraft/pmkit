@@ -1,0 +1,49 @@
+[package]
+name = "pmkit"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+description = "Blueprint setup for product managers who work with coding agents"
+authors = ["Seán Baufeld"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/biokraft/pmkit"
+homepage = "https://github.com/biokraft/pmkit"
+keywords = ["cli", "agents", "skills", "product-management", "devtools"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = ["docs/", ".github/", ".worktrees/"]
+
+[lib]
+name = "pmkit"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pmkit"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+comfy-table = "7"
+owo-colors = { version = "4", features = ["supports-colors"] }
+inquire = "0.7"
+open = "5"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+serial_test = "3"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
