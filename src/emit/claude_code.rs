@@ -11,6 +11,9 @@ use crate::target::{Destination, Target};
 /// match exits 2 (blocked, message on stderr) and a non-match exits 0
 /// (allowed) — never anything in between, and never nonzero on the pass
 /// path, which would otherwise block *every* Bash call rather than none.
+///
+/// `bb`, the Bitbucket Cloud CLI, has no merge command, so only its `pr
+/// create` is listed here.
 pub(crate) const BLOCKED: &[(&str, &str)] = &[
     (
         "git( [^ ]+)* push",
@@ -27,6 +30,10 @@ pub(crate) const BLOCKED: &[(&str, &str)] = &[
     (
         "gh( [^ ]+)* pr( [^ ]+)* merge",
         "pmkit: merging a pull request needs an explicit yes from the human.",
+    ),
+    (
+        "bb( [^ ]+)* pr( [^ ]+)* create",
+        "pmkit: opening a pull request needs an explicit yes from the human.",
     ),
 ];
 
@@ -115,6 +122,13 @@ mod tests {
     /// `PATH` so a test can simulate `jq` being unavailable by pointing it at
     /// a directory that does not contain it.
     fn run_push_hook(command_value: &str, extra_path: Option<&str>) -> i32 {
+        run_hook("git( [^ ]+)* push", command_value, extra_path)
+    }
+
+    /// Generalised form of `run_push_hook`: locates the hook whose command
+    /// text contains `pattern_needle` and runs it against `command_value`,
+    /// returning the process exit code.
+    fn run_hook(pattern_needle: &str, command_value: &str, extra_path: Option<&str>) -> i32 {
         let dest = destination_for(
             Target::ClaudeCode,
             &PathBuf::from("/p"),
@@ -130,9 +144,9 @@ mod tests {
                 h["hooks"][0]["command"]
                     .as_str()
                     .unwrap()
-                    .contains("git( [^ ]+)* push")
+                    .contains(pattern_needle)
             })
-            .expect("no push hook found in emitted settings.json");
+            .expect("no matching hook found in emitted settings.json");
         let shell_command = push_hook["hooks"][0]["command"].as_str().unwrap();
 
         let path = match extra_path {
@@ -244,5 +258,40 @@ mod tests {
     fn a_missing_jq_fails_closed_rather_than_silently_allowing() {
         let path = path_without_jq();
         assert_eq!(run_push_hook("git push origin main", Some(&path)), 2);
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn opening_a_bitbucket_pull_request_is_blocked() {
+        assert_eq!(
+            run_hook(
+                "bb( [^ ]+)* pr( [^ ]+)* create",
+                "bb pr create main --title x",
+                None
+            ),
+            2
+        );
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn listing_bitbucket_pull_requests_is_allowed() {
+        assert_eq!(
+            run_hook("bb( [^ ]+)* pr( [^ ]+)* create", "bb pr list --json", None),
+            0
+        );
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn a_bb_pr_create_with_a_repo_flag_before_the_verb_is_blocked() {
+        assert_eq!(
+            run_hook(
+                "bb( [^ ]+)* pr( [^ ]+)* create",
+                "bb -R acme/api pr create main",
+                None
+            ),
+            2
+        );
     }
 }

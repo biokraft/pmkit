@@ -37,6 +37,15 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "raw=$(cat); cmd=$(printf '%s' \"$raw\" | jq -r '.tool_input.command // \"\"' 2>/dev/null); [ -n \"$cmd\" ] || cmd=$raw; printf '%s' \"$cmd\" | tr -s '[:space:]' ' ' | grep -Eq 'bb( [^ ]+)* pr( [^ ]+)* create' && { echo 'pmkit: opening a pull request needs an explicit yes from the human.' >&2; exit 2; }; exit 0",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
       }
     ]
   }
