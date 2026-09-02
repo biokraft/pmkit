@@ -123,7 +123,17 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Some(Command::Doctor) => {
-            println!("doctor is not implemented yet");
+            let probes =
+                pmkit::doctor::probes::run_all(&pmkit::doctor::runner::RealRunner, &home_dir());
+            println!("{}", pmkit::doctor::table(&probes));
+            let fixes: Vec<String> = probes.iter().filter_map(|p| p.fix.clone()).collect();
+            if !fixes.is_empty() {
+                println!("\nTo fix, run:");
+                for f in &fixes {
+                    println!("  {f}");
+                }
+                println!("\npmkit will not run these for you. Copy the ones you want.");
+            }
             Ok(())
         }
         Some(Command::Skill(cmd)) => run_skill(cmd),
