@@ -4,6 +4,17 @@ All notable changes to pmkit are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and pmkit adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Bitbucket Cloud support.** `pmkit setup` now asks whether your team hosts code on GitHub,
+  Bitbucket Cloud, or both, guessing from the git remote first. Choose Bitbucket and the doctor
+  checks [`bb`](https://github.com/biokraft/bbcloud) instead of `gh`, the skills tell the agent to
+  open pull requests with `bb pr create`, and the Claude Code and Cursor hooks block that command
+  until a human says yes. `--forge github|bitbucket|both` skips the question on `setup`,
+  `skill install`, `skill refresh` and `doctor`.
+
 ## [0.1.0] - 2026-09-02
 
 First release.
