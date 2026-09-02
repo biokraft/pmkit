@@ -96,6 +96,17 @@ mod tests {
     /// on Cursor's `{"permission": ...}` JSON deny/allow document alongside
     /// the exit code.
     fn run_push_hook_full(command_value: &str, extra_path: Option<&str>) -> (i32, String) {
+        run_hook_full("git( [^ ]+)* push", command_value, extra_path)
+    }
+
+    /// Generalised form of `run_push_hook_full`: locates the hook whose
+    /// command text contains `pattern_needle` and runs it against
+    /// `command_value`, returning the process exit code and stdout.
+    fn run_hook_full(
+        pattern_needle: &str,
+        command_value: &str,
+        extra_path: Option<&str>,
+    ) -> (i32, String) {
         let dest = destination_for(Target::Cursor, &PathBuf::from("/p"), &PathBuf::from("/h"));
         let files = super::super::cursor::plan(&Capabilities::all_present(), &dest);
         let cfg = files
@@ -106,8 +117,8 @@ mod tests {
         let entries = parsed["hooks"]["beforeShellExecution"].as_array().unwrap();
         let push_hook = entries
             .iter()
-            .find(|h| h["command"].as_str().unwrap().contains("git( [^ ]+)* push"))
-            .expect("no push hook found in emitted hooks.json");
+            .find(|h| h["command"].as_str().unwrap().contains(pattern_needle))
+            .expect("no matching hook found in emitted hooks.json");
         let shell_command = push_hook["command"].as_str().unwrap();
 
         let path = match extra_path {
@@ -228,5 +239,42 @@ mod tests {
     fn a_missing_jq_fails_closed_rather_than_silently_allowing() {
         let path = path_without_jq();
         assert_eq!(run_push_hook("git push origin main", Some(&path)), 2);
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn opening_a_bitbucket_pull_request_is_blocked() {
+        assert_eq!(
+            run_hook_full(
+                "bb( [^ ]+)* pr( [^ ]+)* create",
+                "bb pr create main --title x",
+                None
+            )
+            .0,
+            2
+        );
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn listing_bitbucket_pull_requests_is_allowed() {
+        assert_eq!(
+            run_hook_full("bb( [^ ]+)* pr( [^ ]+)* create", "bb pr list --json", None).0,
+            0
+        );
+    }
+
+    #[test]
+    #[serial(env_path)]
+    fn a_bb_pr_create_with_a_repo_flag_before_the_verb_is_blocked() {
+        assert_eq!(
+            run_hook_full(
+                "bb( [^ ]+)* pr( [^ ]+)* create",
+                "bb -R acme/api pr create main",
+                None
+            )
+            .0,
+            2
+        );
     }
 }

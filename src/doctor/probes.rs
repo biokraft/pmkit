@@ -1,5 +1,6 @@
 use crate::capabilities::{Capabilities, JiraBackend};
 use crate::doctor::runner::Runner;
+use crate::forge::Forge;
 use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,6 +85,35 @@ pub fn probe_gh(r: &dyn Runner) -> Probe {
         status: ProbeStatus::Broken("installed but not logged in".into()),
         why,
         fix: Some(Fix::Command("gh auth login".into())),
+    }
+}
+
+pub fn probe_bb(r: &dyn Runner) -> Probe {
+    let why =
+        "The Bitbucket Cloud CLI is how a pull request gets opened for a developer to review.";
+    if !r.exists("bb") {
+        return Probe {
+            name: "bb",
+            status: ProbeStatus::Missing,
+            why,
+            fix: Some(Fix::Command("brew install biokraft/tap/bb".into())),
+        };
+    }
+    // `bb auth status` exits 0 when logged in and 2 when not.
+    let out = r.run("bb", &["auth", "status"]);
+    if out.ok() {
+        return Probe {
+            name: "bb",
+            status: ProbeStatus::Ok("authenticated".into()),
+            why,
+            fix: None,
+        };
+    }
+    Probe {
+        name: "bb",
+        status: ProbeStatus::Broken("installed but not logged in".into()),
+        why,
+        fix: Some(Fix::Command("bb auth login".into())),
     }
 }
 
@@ -229,16 +259,22 @@ pub fn probe_jira(r: &dyn Runner) -> Probe {
     }
 }
 
-pub fn run_all(r: &dyn Runner, home: &Path) -> Vec<Probe> {
-    vec![
-        probe_git(r),
-        probe_gh(r),
+pub fn run_all(r: &dyn Runner, home: &Path, forge: Forge) -> Vec<Probe> {
+    let mut probes = vec![probe_git(r)];
+    if forge.includes_github() {
+        probes.push(probe_gh(r));
+    }
+    if forge.includes_bitbucket() {
+        probes.push(probe_bb(r));
+    }
+    probes.extend([
         probe_node(r),
         probe_playwright(r),
         probe_jq(r),
         probe_superpowers(r, home),
         probe_jira(r),
-    ]
+    ]);
+    probes
 }
 
 fn is_ok(probes: &[Probe], name: &str) -> bool {
@@ -250,13 +286,15 @@ fn is_ok(probes: &[Probe], name: &str) -> bool {
 /// `jq` deliberately has no `Capabilities` field: its absence changes how
 /// precisely the emitted hook matches, not what the agent is allowed to do, so
 /// it must never appear in the preamble.
-pub fn capabilities_from(probes: &[Probe]) -> Capabilities {
+pub fn capabilities_from(probes: &[Probe], forge: Forge) -> Capabilities {
     Capabilities {
         // A shell exists wherever the doctor could run at all.
         shell: true,
         playwright: is_ok(probes, "playwright") && is_ok(probes, "node"),
         superpowers: is_ok(probes, "superpowers"),
+        forge,
         gh: is_ok(probes, "gh"),
+        bb: is_ok(probes, "bb"),
         jira: match probes.iter().find(|p| p.name == "jira").map(|p| &p.status) {
             Some(ProbeStatus::Ok(b)) if b == "acli" => JiraBackend::Acli,
             Some(ProbeStatus::Ok(_)) => JiraBackend::Mcp,
@@ -271,6 +309,7 @@ mod tests {
     use super::*;
     use crate::capabilities::JiraBackend;
     use crate::doctor::runner::FakeRunner;
+    use crate::forge::Forge;
     use std::path::Path;
 
     #[test]
@@ -294,7 +333,7 @@ mod tests {
     #[test]
     fn every_probe_explains_why_it_matters_in_plain_language() {
         let r = FakeRunner::new();
-        for p in run_all(&r, Path::new("/h")) {
+        for p in run_all(&r, Path::new("/h"), Forge::Both) {
             assert!(!p.why.is_empty(), "{} has no explanation", p.name);
             assert!(p.why.len() < 160, "{} explanation is too long", p.name);
         }
@@ -303,7 +342,7 @@ mod tests {
     #[test]
     fn no_fix_command_anywhere_uses_sudo() {
         let r = FakeRunner::new();
-        for p in run_all(&r, Path::new("/h")) {
+        for p in run_all(&r, Path::new("/h"), Forge::Both) {
             if let Some(fix) = p.fix {
                 let text = fix.text();
                 assert!(!text.contains("sudo"), "{}: {}", p.name, text);
@@ -357,7 +396,10 @@ mod tests {
 
     #[test]
     fn capabilities_reflect_exactly_what_the_probes_found() {
-        let empty = capabilities_from(&run_all(&FakeRunner::new(), Path::new("/h")));
+        let empty = capabilities_from(
+            &run_all(&FakeRunner::new(), Path::new("/h"), Forge::Both),
+            Forge::Both,
+        );
         assert!(!empty.playwright);
         assert!(!empty.gh);
         assert_eq!(empty.jira, JiraBackend::None);
@@ -368,9 +410,63 @@ mod tests {
             .with("node", 0, "v20.11.0")
             .with("npx", 0, "Version 1.50.0")
             .with("acli", 0, "acli 1.0.0");
-        let caps = capabilities_from(&run_all(&full, Path::new("/h")));
+        let caps = capabilities_from(&run_all(&full, Path::new("/h"), Forge::Both), Forge::Both);
         assert!(caps.playwright);
         assert!(caps.gh);
         assert_eq!(caps.jira, JiraBackend::Acli);
+    }
+
+    #[test]
+    fn bb_present_and_authenticated_is_ok() {
+        let r = FakeRunner::new().with("bb", 0, "email  x@y.z");
+        let p = probe_bb(&r);
+        assert!(matches!(p.status, ProbeStatus::Ok(_)));
+        assert!(p.fix.is_none());
+    }
+
+    #[test]
+    fn bb_present_but_unauthenticated_is_broken_not_ok() {
+        let r = FakeRunner::new().with("bb", 2, "");
+        let p = probe_bb(&r);
+        assert!(matches!(p.status, ProbeStatus::Broken(_)));
+        assert_eq!(p.fix, Some(Fix::Command("bb auth login".into())));
+    }
+
+    #[test]
+    fn bb_missing_offers_the_tap_install() {
+        let p = probe_bb(&FakeRunner::new());
+        assert_eq!(p.status, ProbeStatus::Missing);
+        assert_eq!(
+            p.fix,
+            Some(Fix::Command("brew install biokraft/tap/bb".into()))
+        );
+    }
+
+    #[test]
+    fn run_all_probes_only_the_chosen_forges_cli() {
+        let names = |forge: Forge| -> Vec<&'static str> {
+            run_all(&FakeRunner::new(), Path::new("/h"), forge)
+                .iter()
+                .map(|p| p.name)
+                .collect()
+        };
+        let gh_only = names(Forge::GitHub);
+        assert!(gh_only.contains(&"gh") && !gh_only.contains(&"bb"));
+        let bb_only = names(Forge::Bitbucket);
+        assert!(bb_only.contains(&"bb") && !bb_only.contains(&"gh"));
+        let both = names(Forge::Both);
+        assert!(both.contains(&"gh") && both.contains(&"bb"));
+    }
+
+    #[test]
+    fn capabilities_carry_the_forge_and_the_bb_flag() {
+        let r = FakeRunner::new().with("bb", 0, "ok");
+        let caps = capabilities_from(
+            &run_all(&r, Path::new("/h"), Forge::Bitbucket),
+            Forge::Bitbucket,
+        );
+        assert_eq!(caps.forge, Forge::Bitbucket);
+        assert!(caps.bb);
+        assert!(!caps.gh);
     }
 }

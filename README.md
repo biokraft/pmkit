@@ -24,6 +24,8 @@ Run `pmkit setup` inside the project you want it in. It asks, one question at a 
 - which of the five targets below you use (or `--yes` to install into every target, `--target
   <agent>` to install into just one, then remove any others later with `pmkit skill uninstall
   --target <agent>`)
+- whether your team hosts code on GitHub, Bitbucket Cloud, or both. pmkit guesses from the
+  project's git remote and you confirm. Pass `--forge github|bitbucket|both` to skip the question.
 - nothing else — there is no API key, no account, no network call beyond what `pmkit doctor`'s
   probes make to check whether your local tools are installed
 
@@ -63,9 +65,11 @@ Two of the five targets back these gates with software: **Claude Code**, via a `
 `.claude/settings.json`, and **Cursor**, via a `beforeShellExecution` hook in `.cursor/hooks.json`.
 Both deny the matching command with exit code 2 before it runs.
 
-Even there, the hook only catches gate 1: `git push`, `git merge`, `gh pr create`, `gh pr merge`.
-Gates 2 and 3 (Jira writes, anything leaving the machine) are not something a shell hook can see
-coming, so they stay prose everywhere, Claude Code and Cursor included.
+Even there, the hook only catches gate 1: `git push`, `git merge`, `gh pr create`, `gh pr merge`,
+`bb pr create`. `bb` (the Bitbucket Cloud CLI) has no merge command, so merging on Bitbucket happens
+in the browser and stays prose. Gates 2 and 3 (Jira writes, anything leaving the machine) are not
+something a shell hook can see coming, so they stay prose everywhere, Claude Code and Cursor
+included.
 
 **Codex / ChatGPT Workspace Agents, Claude Cowork, and ChatGPT enforce nothing.** All three gates
 are written instructions there and nothing more. No hook, no block, no exit code. If you choose one
@@ -79,7 +83,9 @@ two lists: shell commands you can paste and run, and manual steps that happen so
 agent, in a browser).
 
 - **git** — records every change, so nothing your agent does is unrecoverable.
-- **gh** — the GitHub CLI is how a pull request gets opened for a developer to review.
+- **gh** or **bb** — the pull-request CLI for your host. `gh` for GitHub, [`bb`](https://github.com/biokraft/bbcloud)
+  for Bitbucket Cloud (`brew install biokraft/tap/bb`, then `bb auth login`). The doctor only checks
+  the one you chose.
 - **Node 20+** — runs the browser automation that proves a screen actually works.
 - **Playwright** (`npx playwright install chromium`) — drives a real browser, so a claim that
   something works can be checked.
@@ -95,6 +101,7 @@ agent, in a browser).
 
 ```bash
 pmkit doctor                                   # check prerequisites; never fixes anything itself
+pmkit doctor --forge bitbucket                  # check the Bitbucket CLI instead of gh
 pmkit skill list                                # every tracked file: current, modified, or missing
 pmkit skill refresh                             # re-emit already-installed targets; won't restore
                                                  # files you deliberately deleted
@@ -103,6 +110,8 @@ pmkit skill uninstall --all                     # remove everything pmkit wrote
 ```
 
 `uninstall` requires either `--target <agent>` or `--all`. There is no bare `pmkit skill uninstall`.
+`--forge github|bitbucket|both` is accepted by `setup`, `skill install`, `skill refresh`, and
+`doctor`, to skip or override the forge question.
 
 ## Upgrading
 

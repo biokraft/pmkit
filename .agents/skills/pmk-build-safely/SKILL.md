@@ -52,3 +52,6 @@ anything outside this repo.
 
 Every one of these needs its own yes, every time. Permission for one push is not permission for the
 next one, and permission to open a pull request is not permission to push more commits into it.
+
+Which command opens the pull request depends on where the team hosts code. The "Your surface"
+section at the top of this skill names the tool; use that one and no other.

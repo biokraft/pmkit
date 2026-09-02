@@ -4,6 +4,37 @@ All notable changes to pmkit are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and pmkit adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-09-02
+
+Bitbucket Cloud joins GitHub as a supported code host.
+
+### Added
+
+- **Bitbucket Cloud support.** `pmkit setup` now asks whether your team hosts code on GitHub,
+  Bitbucket Cloud, or both, guessing from the git remote first. Choose Bitbucket and the doctor
+  checks [`bb`](https://github.com/biokraft/bbcloud) instead of `gh`, the skills tell the agent to
+  open pull requests with `bb pr create`, and the Claude Code and Cursor hooks block that command
+  until a human says yes. `--forge github|bitbucket|both` skips the question on `setup`,
+  `skill install`, `skill refresh` and `doctor`.
+- **A `bb` doctor probe.** Missing: `brew install biokraft/tap/bb`. Installed but not logged in:
+  `bb auth login`. The `gh` probe now runs only when GitHub is one of your hosts, so a
+  Bitbucket-only team is no longer nagged about a tool it will never use.
+- **Fifth hook pattern.** Claude Code and Cursor hooks now deny `bb pr create` alongside
+  `git push`, `git merge`, `gh pr create` and `gh pr merge`. `bb` has no merge command, so merging
+  on Bitbucket stays a browser action and a prose gate.
+
+### Changed
+
+- The capability preamble names the pull-request tool for your host instead of assuming `gh`.
+  Claude Cowork and ChatGPT now say plainly that a pull request cannot be opened from that surface,
+  rather than implying `gh` is merely missing.
+- `pmk-build-safely` defers to the surface section for which command opens a pull request.
+
+### Fixed
+
+- When `gh` is installed but not logged in, the preamble said it was not installed. It now says
+  "not installed or not logged in", which is what the doctor actually checked.
+
 ## [0.1.0] - 2026-09-02
 
 First release.

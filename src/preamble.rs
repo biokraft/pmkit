@@ -1,4 +1,5 @@
 use crate::capabilities::{Capabilities, JiraBackend};
+use crate::forge::Forge;
 use crate::target::Target;
 
 /// The only text that differs between targets. Everything the skill bodies are
@@ -55,11 +56,44 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
         );
     }
 
-    if !caps.gh || !target.is_in_repo() {
+    if !target.is_in_repo() {
         out.push_str(
-            "`gh` is not installed, so you cannot open a pull request. Stop after committing and \
-             tell the human.\n\n",
+            "You cannot open a pull request from this surface. Stop after committing and tell \
+             the human.\n\n",
         );
+    } else {
+        if caps.forge == Forge::Both {
+            out.push_str(
+                "This team hosts code on both GitHub and Bitbucket Cloud. Run `git remote -v` to \
+                 see which one this repository uses, then use only that host's tool.\n\n",
+            );
+        }
+        if caps.forge.includes_github() {
+            if caps.gh {
+                out.push_str(
+                    "Pull requests on GitHub go through the `gh` command line tool \
+                     (`gh pr create`).\n\n",
+                );
+            } else {
+                out.push_str(
+                    "`gh` is not installed or not logged in, so you cannot open a pull \
+                     request. Stop after committing and tell the human.\n\n",
+                );
+            }
+        }
+        if caps.forge.includes_bitbucket() {
+            if caps.bb {
+                out.push_str(
+                    "Pull requests on Bitbucket Cloud go through the `bb` command line tool \
+                     (`bb pr create`). Never use `gh` here.\n\n",
+                );
+            } else {
+                out.push_str(
+                    "`bb` is not installed or not logged in, so you cannot open a pull request on \
+                     Bitbucket Cloud. Stop after committing and tell the human.\n\n",
+                );
+            }
+        }
     }
 
     match caps.jira {
@@ -90,6 +124,7 @@ pub fn preamble(target: Target, caps: &Capabilities) -> String {
 mod tests {
     use super::*;
     use crate::capabilities::{Capabilities, JiraBackend};
+    use crate::forge::Forge;
     use crate::target::Target;
 
     #[test]
@@ -199,6 +234,86 @@ mod tests {
         assert!(text.contains("You CANNOT verify anything visually"));
         assert!(!text.contains("A browser is available"));
         assert!(text.contains("cannot open a pull request"));
+    }
+
+    #[test]
+    fn a_github_team_with_gh_is_told_to_use_gh_and_never_hears_about_bb() {
+        let text = preamble(Target::ClaudeCode, &Capabilities::all_present());
+        assert!(text.contains("`gh pr create`"), "{text}");
+        assert!(!text.contains("`bb`"), "{text}");
+        assert!(!text.contains("Bitbucket"), "{text}");
+    }
+
+    #[test]
+    fn a_github_team_without_gh_cannot_open_a_pull_request() {
+        let caps = Capabilities {
+            gh: false,
+            ..Capabilities::all_present()
+        };
+        let text = preamble(Target::ClaudeCode, &caps);
+        assert!(
+            text.contains("`gh` is not installed or not logged in"),
+            "{text}"
+        );
+        assert!(text.contains("cannot open a pull request"), "{text}");
+    }
+
+    #[test]
+    fn a_bitbucket_team_with_bb_is_told_to_use_bb_and_never_gh() {
+        let caps = Capabilities {
+            forge: Forge::Bitbucket,
+            ..Capabilities::all_present()
+        };
+        let text = preamble(Target::ClaudeCode, &caps);
+        assert!(text.contains("Bitbucket Cloud"), "{text}");
+        assert!(text.contains("`bb pr create`"), "{text}");
+        assert!(text.contains("Never use `gh` here"), "{text}");
+        assert!(!text.contains("`gh pr create`"), "{text}");
+    }
+
+    #[test]
+    fn a_bitbucket_team_without_bb_cannot_open_a_pull_request() {
+        let caps = Capabilities {
+            forge: Forge::Bitbucket,
+            bb: false,
+            ..Capabilities::all_present()
+        };
+        let text = preamble(Target::ClaudeCode, &caps);
+        assert!(
+            text.contains("`bb` is not installed or not logged in"),
+            "{text}"
+        );
+        assert!(
+            text.contains("cannot open a pull request on Bitbucket Cloud"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn a_team_on_both_hosts_is_told_to_check_the_remote_and_hears_about_both_tools() {
+        let caps = Capabilities {
+            forge: Forge::Both,
+            ..Capabilities::all_present()
+        };
+        let text = preamble(Target::ClaudeCode, &caps);
+        assert!(text.contains("git remote -v"), "{text}");
+        assert!(text.contains("`gh pr create`"), "{text}");
+        assert!(text.contains("`bb pr create`"), "{text}");
+    }
+
+    #[test]
+    fn a_shell_less_target_never_names_a_pull_request_tool_whatever_the_forge() {
+        for forge in Forge::all() {
+            let caps = Capabilities {
+                forge,
+                ..Capabilities::all_present()
+            };
+            for t in [Target::Cowork, Target::ChatGpt] {
+                let text = preamble(t, &caps);
+                assert!(text.contains("cannot open a pull request"), "{text}");
+                assert!(!text.contains("pr create"), "{text}");
+            }
+        }
     }
 
     #[test]

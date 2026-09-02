@@ -8,6 +8,7 @@ pub mod commands;
 pub mod doctor;
 pub mod emit;
 pub mod error;
+pub mod forge;
 pub mod preamble;
 pub mod skills;
 pub mod state;

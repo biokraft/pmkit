@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 use assert_cmd::Command;
+use predicates::prelude::PredicateBooleanExt;
 use predicates::str::contains;
 
 #[test]
@@ -136,4 +137,100 @@ fn setup_warns_loudly_when_a_write_fails() {
     assert
         .stdout(contains("could not be written"))
         .stdout(contains("NOT active"));
+}
+
+fn git_remote(project: &std::path::Path, url: &str) {
+    let run = |args: &[&str]| {
+        let ok = std::process::Command::new("git")
+            .args(args)
+            .current_dir(project)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "git {args:?} failed");
+    };
+    run(&["init", "-q"]);
+    run(&["remote", "add", "origin", url]);
+}
+
+#[test]
+fn setup_yes_with_forge_bitbucket_tells_the_agent_about_bb_and_not_gh() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+
+    Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(&project)
+        .env("PMKIT_HOME", tmp.path().join("home"))
+        .env("PMKIT_STATE_FILE", tmp.path().join("skills.json"))
+        .args([
+            "setup",
+            "--yes",
+            "--target",
+            "codex",
+            "--forge",
+            "bitbucket",
+        ])
+        .assert()
+        .success()
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap())
+        .stdout(predicates::str::is_match(r"(?m)^│ gh ").unwrap().not());
+
+    let skill =
+        std::fs::read_to_string(project.join(".agents/skills/pmk-feature-loop/SKILL.md")).unwrap();
+    assert!(skill.contains("Bitbucket Cloud"), "{skill}");
+    assert!(!skill.contains("`gh pr create`"), "{skill}");
+}
+
+#[test]
+fn setup_yes_detects_bitbucket_from_the_git_remote_when_no_flag_is_given() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    git_remote(&project, "git@bitbucket.org:acme/api.git");
+
+    Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(&project)
+        .env("PMKIT_HOME", tmp.path().join("home"))
+        .env("PMKIT_STATE_FILE", tmp.path().join("skills.json"))
+        .args(["setup", "--yes", "--target", "codex"])
+        .assert()
+        .success()
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap());
+
+    let skill =
+        std::fs::read_to_string(project.join(".agents/skills/pmk-feature-loop/SKILL.md")).unwrap();
+    assert!(skill.contains("Bitbucket Cloud"), "{skill}");
+}
+
+#[test]
+fn setup_yes_falls_back_to_github_when_nothing_is_detectable() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    std::fs::create_dir_all(&project).unwrap();
+
+    Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(&project)
+        .env("PMKIT_HOME", tmp.path().join("home"))
+        .env("PMKIT_STATE_FILE", tmp.path().join("skills.json"))
+        .args(["setup", "--yes", "--target", "codex"])
+        .assert()
+        .success()
+        .stdout(predicates::str::is_match(r"(?m)^│ gh ").unwrap())
+        .stdout(predicates::str::is_match(r"(?m)^│ bb ").unwrap().not());
+}
+
+#[test]
+fn an_unknown_forge_is_rejected_with_the_valid_list() {
+    let tmp = tempfile::tempdir().unwrap();
+    Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(tmp.path())
+        .args(["setup", "--yes", "--forge", "gitlab"])
+        .assert()
+        .failure()
+        .stderr(contains("github, bitbucket, both"));
 }

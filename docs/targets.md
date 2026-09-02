@@ -14,7 +14,7 @@ put it there, pmkit leaves it alone and reports it as refused rather than touchi
 - `.claude/skills/pmk-feature-loop/SKILL.md`, `pmk-shape-idea/`, `pmk-build-safely/`,
   `pmk-verify-visually/`, `pmk-jira-flow/`: one `SKILL.md` per skill
 - `.claude/settings.json` — a `PreToolUse` hook, matcher `Bash`, one entry each for `git push`,
-  `git merge`, `gh pr create`, `gh pr merge`
+  `git merge`, `gh pr create`, `gh pr merge`, `bb pr create`
 
 **By hand:** nothing — `pmkit setup` is sufficient. If you already had a `.claude/settings.json`,
 merge pmkit's `PreToolUse` hooks into it yourself, then run `pmkit setup` again so pmkit can confirm
@@ -32,14 +32,14 @@ off-machine commands are prose, same as everywhere else.
 - `.cursor/rules/pmkit/pmk-feature-loop/SKILL.md` and the other four skills, same layout as Claude
   Code but under `.cursor/rules/pmkit/`
 - `AGENTS.md` at the project root
-- `.cursor/hooks.json` — a `beforeShellExecution` hook with the same four command patterns as Claude
+- `.cursor/hooks.json` — a `beforeShellExecution` hook with the same five command patterns as Claude
   Code's
 
 **By hand:** nothing, normally. If you already had a `.cursor/hooks.json`, merge pmkit's
 `beforeShellExecution` entries in by hand and re-run `pmkit setup`.
 
 **Gates:** machine-enforced. `beforeShellExecution` denies with exit code 2, same as Claude Code,
-same four patterns, same limitation (gate 1 only).
+same five patterns, same limitation (gate 1 only).
 
 **Remove:** `pmkit skill uninstall --target cursor`
 

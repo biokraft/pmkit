@@ -14,6 +14,8 @@ You have a shell. Run commands yourself, and show the human what you ran.
 
 A browser is available through Playwright. Use it to verify UI work.
 
+Pull requests on GitHub go through the `gh` command line tool (`gh pr create`).
+
 Jira access is through the `acli` command line tool. Use it for every Jira read and write.
 
 # The pmkit loop

@@ -14,6 +14,8 @@ You have a shell. Run commands yourself, and show the human what you ran.
 
 A browser is available through Playwright. Use it to verify UI work.
 
+Pull requests on GitHub go through the `gh` command line tool (`gh pr create`).
+
 Jira access is through the `acli` command line tool. Use it for every Jira read and write.
 
 # Build it safely
@@ -64,3 +66,6 @@ anything outside this repo.
 
 Every one of these needs its own yes, every time. Permission for one push is not permission for the
 next one, and permission to open a pull request is not permission to push more commits into it.
+
+Which command opens the pull request depends on where the team hosts code. The "Your surface"
+section at the top of this skill names the tool; use that one and no other.
