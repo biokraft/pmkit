@@ -4,6 +4,12 @@ All notable changes to pmkit are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and pmkit adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/biokraft/pmkit/compare/v0.2.0...v0.2.1) - 2026-09-02
+
+### Documentation
+
+- add AGENTS.md for coding agents, CLAUDE.md symlinks to it
+
 ## [0.2.0] - 2026-09-02
 
 Bitbucket Cloud joins GitHub as a supported code host.
