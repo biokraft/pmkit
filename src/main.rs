@@ -17,6 +17,15 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Set pmkit up in the agents you use. Start here.
+    Setup {
+        /// Skip the questions and use every detected default.
+        #[arg(long)]
+        yes: bool,
+        /// Only set up this one agent.
+        #[arg(long, value_parser = parse_target)]
+        target: Option<Target>,
+    },
     /// Check the tools pmkit relies on and offer to fix what is missing.
     Doctor,
     /// Install, list, refresh or remove the pmkit skills.
@@ -122,6 +131,21 @@ fn run_skill(cmd: SkillCmd) -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
+        Some(Command::Setup { yes, target }) => {
+            let dir = std::env::current_dir()?;
+            let home = home_dir();
+            let state = state_file();
+            let targets: Vec<Target> = match target {
+                Some(t) => vec![t],
+                None => Target::all().to_vec(),
+            };
+            if yes {
+                pmkit::wizard::run_unattended(&targets, &dir, &home, &state)?;
+            } else {
+                pmkit::wizard::run(&dir, &home, &state)?;
+            }
+            Ok(())
+        }
         Some(Command::Doctor) => {
             let probes =
                 pmkit::doctor::probes::run_all(&pmkit::doctor::runner::RealRunner, &home_dir());
