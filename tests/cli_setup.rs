@@ -103,3 +103,37 @@ fn setup_yes_degrades_when_prerequisites_are_missing_instead_of_aborting() {
             .unwrap();
     assert!(skill.contains("You CANNOT verify anything visually"));
 }
+
+#[test]
+fn setup_warns_loudly_when_a_write_fails() {
+    // Fix round 1, Finding 3: a failed write is at least as serious as a
+    // refused overwrite. Force one by making `.claude` read-only before the
+    // skill files under it are written, so `apply`'s `write_file` call
+    // returns Err and the outcome comes back `Action::Failed`.
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    let claude_dir = project.join(".claude");
+    std::fs::create_dir_all(&claude_dir).unwrap();
+    let mut perms = std::fs::metadata(&claude_dir).unwrap().permissions();
+    perms.set_readonly(true);
+    std::fs::set_permissions(&claude_dir, perms).unwrap();
+
+    let assert = Command::cargo_bin("pmkit")
+        .unwrap()
+        .current_dir(&project)
+        .env("PMKIT_HOME", tmp.path().join("home"))
+        .env("PMKIT_STATE_FILE", tmp.path().join("skills.json"))
+        .args(["setup", "--yes", "--target", "claude-code"])
+        .assert()
+        .success();
+
+    // Restore permissions so the tempdir can be cleaned up.
+    let mut perms = std::fs::metadata(&claude_dir).unwrap().permissions();
+    #[allow(clippy::permissions_set_readonly_false)]
+    perms.set_readonly(false);
+    std::fs::set_permissions(&claude_dir, perms).unwrap();
+
+    assert
+        .stdout(contains("could not be written"))
+        .stdout(contains("NOT active"));
+}

@@ -157,6 +157,7 @@ pub fn is_pmkit_path(path: &Path) -> bool {
         name.as_str(),
         "AGENTS.md"
             | "settings.json"
+            | "hooks.json"
             | "README.md"
             | "openai.yaml"
             | "pmkit-chatgpt-instructions.md"
@@ -528,6 +529,61 @@ mod tests {
         assert!(!is_pmkit_path(std::path::Path::new(
             "/p/.claude/skills/not-a-pmkit-skill/SKILL.md"
         )));
+    }
+
+    /// Fix round 1, Finding 1: `.cursor/hooks.json` is a real path the Cursor
+    /// emitter plans, but before this fix it was silently rejected by the
+    /// guard and every install of it failed — the safety gates the hook
+    /// enforced were never written to disk.
+    #[test]
+    fn is_pmkit_path_accepts_cursor_hooks_json_and_still_rejects_arbitrary_paths() {
+        assert!(is_pmkit_path(std::path::Path::new("/p/.cursor/hooks.json")));
+        assert!(!is_pmkit_path(std::path::Path::new("/etc/passwd")));
+    }
+
+    /// Fix round 1, Finding 2: this is the systemic gap — every prior test
+    /// exercised `plan_files` (intent) or `apply` against a single target
+    /// (behaviour, but not across the board). Parameterised over
+    /// `Target::all()` so a sixth target cannot be added without this
+    /// coverage, and specifically so a target whose planned file the state
+    /// guard silently rejects (as `.cursor/hooks.json` did) cannot pass
+    /// unnoticed: every planned path must land on disk with exactly the
+    /// planned bytes, and `apply` must never report `Action::Failed`.
+    #[test]
+    fn every_target_round_trips_every_planned_file_to_disk_with_no_failures() {
+        for t in Target::all() {
+            let tmp = tempfile::tempdir().unwrap();
+            let dest = Destination::Repo(tmp.path().to_path_buf());
+            let files = plan_files(t, &Capabilities::all_present(), &dest);
+            let mut entries = Vec::new();
+            let out = apply(&files, t, &mut entries, MissingPolicy::Restore);
+
+            for o in &out {
+                assert_ne!(
+                    o.action,
+                    Action::Failed,
+                    "{}: {} failed to write",
+                    t.as_str(),
+                    o.path.display()
+                );
+            }
+            for f in &files {
+                let on_disk = std::fs::read_to_string(&f.path).unwrap_or_else(|e| {
+                    panic!(
+                        "{}: {} missing after apply: {e}",
+                        t.as_str(),
+                        f.path.display()
+                    )
+                });
+                assert_eq!(
+                    on_disk,
+                    f.contents,
+                    "{}: {} landed with the wrong contents",
+                    t.as_str(),
+                    f.path.display()
+                );
+            }
+        }
     }
 
     #[test]

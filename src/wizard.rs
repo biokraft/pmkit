@@ -120,6 +120,27 @@ pub fn run_unattended(
              safety gates are NOT enforced until you do."
         );
     }
+    // A failed write is at least as serious as a refused overwrite: the file
+    // simply never landed, so whatever it carried — for a hook-enforced
+    // target, that can be the gate config itself — is not installed. Give it
+    // its own block for the same reason `skipped` gets one, rather than
+    // letting it scroll past as a single row in the list above.
+    let failed: Vec<&Outcome> = outcomes
+        .iter()
+        .filter(|o| o.action == Action::Failed)
+        .collect();
+    if !failed.is_empty() {
+        println!("\n{} file(s) could not be written:\n", failed.len());
+        for o in &failed {
+            println!("  {}", o.path.display());
+        }
+        println!(
+            "\npmkit could not write these, so whatever they were meant to contain is not \
+             installed. Check the path is writable and run `pmkit setup` again. If one of them \
+             is a hook-enforced target's gate config (settings.json on Claude Code, hooks.json on \
+             Cursor), the safety gates are NOT active until it lands."
+        );
+    }
     println!("\nWhat to do next\n");
     for &t in targets {
         let installed = gate_installed(&outcomes, t);
